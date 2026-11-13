@@ -1,0 +1,1843 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>信號狀態監控面板</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <style>
+        .led-off {
+            background-color: #374151;
+            box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.6);
+        }
+        .led-on-green {
+            background-color: #22c55e;
+            box-shadow: 0 0 10px #22c55e, 0 0 18px #22c55e, inset 0 -1px 2px rgba(255, 255, 255, 0.4);
+        }
+        .led-on-reverse {
+            background-color: #e11d48;
+            box-shadow: 0 0 10px #f43f5e, 0 0 18px #e11d48, inset 0 -1px 2px rgba(255, 255, 255, 0.4);
+        }
+        .led-on-yellow {
+            background-color: #eab308;
+            box-shadow: 0 0 10px #fde047, 0 0 18px #eab308, inset 0 -1px 2px rgba(255, 255, 255, 0.4);
+        }
+
+        /* 🌟 純 Tick Icon (ON / OFF) 風格 */
+        .tick-btn-off {
+            background: linear-gradient(135deg, rgba(30, 41, 59, 0.85), rgba(15, 23, 42, 0.95));
+            border: 1.5px solid #475569;
+            color: #64748b;
+            box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.5);
+        }
+        .tick-btn-off:hover {
+            border-color: #94a3b8;
+            color: #cbd5e1;
+            box-shadow: 0 0 8px rgba(148, 163, 184, 0.3);
+        }
+        .tick-btn-on {
+            background: linear-gradient(135deg, rgba(22, 163, 74, 0.95), rgba(15, 118, 54, 1));
+            border: 1.5px solid #4ade80;
+            color: #ffffff;
+            box-shadow: 0 0 12px rgba(34, 197, 94, 0.6), inset 0 1px 2px rgba(255, 255, 255, 0.4);
+        }
+        .tick-btn-on:hover {
+            box-shadow: 0 0 16px rgba(74, 222, 128, 0.8), inset 0 1px 3px rgba(255, 255, 255, 0.5);
+        }
+
+        .tile-green {
+            background: linear-gradient(135deg, rgba(6, 78, 59, 0.95), rgba(4, 120, 87, 0.8));
+            border: 1.5px solid #22c55e;
+            box-shadow: 0 0 12px rgba(34, 197, 94, 0.4), inset 0 1px 2px rgba(255, 255, 255, 0.2);
+        }
+        .tile-red {
+            background: linear-gradient(135deg, rgba(127, 29, 29, 0.95), rgba(185, 28, 28, 0.8));
+            border: 1.5px solid #ef4444;
+            box-shadow: 0 0 12px rgba(239, 68, 68, 0.4), inset 0 1px 2px rgba(255, 255, 255, 0.2);
+        }
+        .tile-gray {
+            background: linear-gradient(135deg, rgba(55, 65, 81, 0.9), rgba(75, 85, 99, 0.75));
+            border: 1.5px solid #9ca3af;
+            box-shadow: 0 0 12px rgba(156, 163, 175, 0.3), inset 0 1px 2px rgba(255, 255, 255, 0.15);
+        }
+
+        .big-light-circle {
+            width: 4.2rem;
+            height: 4.2rem;
+        }
+
+        .big-red {
+            background: radial-gradient(circle at 35% 35%, #f87171, #ef4444);
+            box-shadow: 0 0 20px #ef4444, 0 0 40px rgba(239, 68, 68, 0.6), inset 0 2px 4px rgba(255,255,255,0.6);
+            border: 3px solid #fca5a5;
+        }
+        .big-green {
+            background: radial-gradient(circle at 35% 35%, #4ade80, #22c55e);
+            box-shadow: 0 0 25px #22c55e, 0 0 50px rgba(34, 197, 94, 0.8), inset 0 2px 4px rgba(255,255,255,0.6);
+            border: 3px solid #86efac;
+        }
+        .big-yellow {
+            background: radial-gradient(circle at 35% 35%, #fde047, #eab308);
+            box-shadow: 0 0 25px #eab308, 0 0 50px rgba(234, 179, 8, 0.8), inset 0 2px 4px rgba(255,255,255,0.6);
+            border: 3px solid #fef08a;
+            color: #422006 !important;
+        }
+
+        .app-bg-normal {
+            background-color: #030712;
+        }
+        .app-bg-green-mode {
+            background: linear-gradient(180deg, #064e3b 0%, #022c22 40%, #031c16 100%) !important;
+        }
+        .app-bg-yellow-mode {
+            background: linear-gradient(180deg, #451a03 0%, #291202 40%, #030712 100%) !important;
+        }
+
+        .panel-green-mode {
+            background-color: rgba(6, 78, 59, 0.6) !important;
+            border-color: rgba(74, 222, 128, 0.6) !important;
+            box-shadow: 0 0 25px rgba(34, 197, 94, 0.25), inset 0 0 15px rgba(34, 197, 94, 0.1);
+            backdrop-filter: blur(8px);
+        }
+        .panel-yellow-mode {
+            background-color: rgba(69, 26, 3, 0.6) !important;
+            border-color: rgba(250, 204, 21, 0.6) !important;
+            box-shadow: 0 0 25px rgba(234, 179, 8, 0.25), inset 0 0 15px rgba(234, 179, 8, 0.1);
+            backdrop-filter: blur(8px);
+        }
+
+        .item-row-green-mode {
+            background-color: rgba(2, 44, 34, 0.8) !important;
+            border-color: rgba(34, 197, 94, 0.35) !important;
+        }
+        .item-row-yellow-mode {
+            background-color: rgba(41, 18, 2, 0.8) !important;
+            border-color: rgba(234, 179, 8, 0.35) !important;
+        }
+
+        .tab-status-green {
+            border-color: rgba(34, 197, 94, 0.6);
+            background-color: rgba(6, 78, 59, 0.4);
+            color: #86efac;
+        }
+        .tab-status-green.tab-active {
+            border-color: #22c55e;
+            background-color: rgba(6, 78, 59, 0.85);
+            box-shadow: 0 0 12px rgba(34, 197, 94, 0.45);
+            color: #ffffff;
+        }
+
+        .tab-status-yellow {
+            border-color: rgba(234, 179, 8, 0.6);
+            background-color: rgba(113, 63, 18, 0.35);
+            color: #fef08a;
+        }
+        .tab-status-yellow.tab-active {
+            border-color: #eab308;
+            background-color: rgba(113, 63, 18, 0.75);
+            box-shadow: 0 0 12px rgba(234, 179, 8, 0.45);
+            color: #ffffff;
+        }
+
+        .tab-status-red {
+            border-color: rgba(239, 68, 68, 0.35);
+            background-color: rgba(127, 29, 29, 0.15);
+            color: #fca5a5;
+        }
+        .tab-status-red.tab-active {
+            border-color: #ef4444;
+            background-color: rgba(127, 29, 29, 0.55);
+            box-shadow: 0 0 10px rgba(239, 68, 68, 0.35);
+            color: #ffffff;
+        }
+
+        .is-dragging {
+            opacity: 0.35 !important;
+            border: 1.5px dashed #38bdf8 !important;
+        }
+        .is-drag-target {
+            border: 2px solid #38bdf8 !important;
+            box-shadow: 0 0 12px rgba(56, 189, 248, 0.5) !important;
+            transform: translateY(-2px);
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="bg-black text-slate-100 h-screen w-screen overflow-hidden select-none font-sans">
+    <div 
+        id="app" 
+        class="h-full w-full p-2 transition-all duration-700 overflow-hidden flex flex-col relative"
+        :class="appBackgroundClass"
+    >
+        <!-- 登入遮罩 Modal -->
+        <div v-if="!currentUser" class="absolute inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
+            <div class="bg-slate-900 border border-slate-700 rounded-2xl p-6 sm:p-8 w-full max-w-sm shadow-2xl space-y-4">
+                <div class="text-center">
+                    <h2 class="text-xl font-bold text-white tracking-wide">系統安全登入</h2>
+                    <p class="text-xs text-slate-400 mt-1">獨立用戶 Checklist 與指標環境</p>
+                </div>
+
+                <div class="space-y-3 pt-2">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 mb-1">用戶名稱 (Username)</label>
+                        <input 
+                            v-model="authForm.username" 
+                            @keyup.enter="handleAuth('login')"
+                            placeholder="例如：admin" 
+                            class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
+                        >
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-400 mb-1">登入密碼 (Password)</label>
+                        <input 
+                            v-model="authForm.password" 
+                            type="password"
+                            @keyup.enter="handleAuth('login')"
+                            placeholder="請輸入密碼..." 
+                            class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
+                        >
+                    </div>
+
+                    <div v-if="authError" class="text-xs text-rose-400 text-center font-medium bg-rose-950/40 border border-rose-800/50 py-1.5 rounded-lg">
+                        {{ authError }}
+                    </div>
+
+                    <div class="flex gap-2 pt-2">
+                        <button 
+                            @click="handleAuth('login')" 
+                            class="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-2 rounded-lg text-sm font-semibold transition cursor-pointer">
+                            登入
+                        </button>
+                        <button 
+                            @click="handleAuth('register')" 
+                            class="flex-1 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 py-2 rounded-lg text-sm font-semibold transition cursor-pointer">
+                            新用戶註冊
+                        </button>
+                    </div>
+
+                    <p class="text-[11px] text-slate-500 text-center pt-2">
+                        預設管理員：<span class="text-slate-400 font-mono">admin</span> / 密碼：<span class="text-slate-400 font-mono">admin123</span>
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 主面板內容 -->
+        <div v-if="currentUser" class="h-full max-w-6xl w-full mx-auto flex flex-col gap-2">
+
+            <!-- 1. Master 指標監控列 (不受 SOP 影響) -->
+            <div 
+                class="border rounded-xl px-3 py-1.5 shadow-xl flex-shrink-0 transition-all duration-500"
+                :class="panelBoxClass"
+            >
+                <div class="flex flex-wrap items-center gap-1.5">
+                    <span class="text-xs font-mono uppercase font-bold flex-shrink-0 mr-1 flex items-center gap-1.5"
+                          :class="masterStatus === 'green' ? 'text-emerald-200' : (masterStatus === 'yellow' ? 'text-amber-200' : 'text-slate-400')">
+                        <span class="w-1.5 h-1.5 rounded-full" 
+                              :class="masterStatus === 'green' ? 'bg-emerald-300' : (masterStatus === 'yellow' ? 'bg-amber-400' : 'bg-blue-400 animate-pulse')"></span>
+                        MASTER 指標:
+                    </span>
+
+                    <div 
+                        v-for="(badge, bIdx) in badges" 
+                        :key="badge.id"
+                        @dragover.prevent="onBadgeDragOver(bIdx)"
+                        @dragleave="onBadgeDragLeave(bIdx)"
+                        @drop.prevent="onBadgeDrop(bIdx)"
+                        class="group flex items-center gap-1 px-1.5 py-1 rounded-lg transition-all duration-300 shadow-md relative select-none"
+                        :class="[
+                            getBadgeTileClass(badge.status),
+                            isBadgeDragging(bIdx) ? 'is-dragging' : '',
+                            isBadgeTarget(bIdx) ? 'is-drag-target' : ''
+                        ]"
+                    >
+                        <span 
+                            v-if="!isLocked"
+                            draggable="true"
+                            @dragstart="onBadgeDragStart(bIdx, $event)"
+                            @dragend="onBadgeDragEnd"
+                            class="text-white/40 hover:text-white cursor-grab active:cursor-grabbing px-0.5 text-xs font-mono select-none"
+                            title="按住左右拖曳排序">⠿</span>
+
+                        <div class="relative flex-shrink-0">
+                            <button 
+                                v-if="!badge.isEditingLabel"
+                                @click="toggleBadgeStatus(badge)" 
+                                @dblclick.stop="!isLocked && startEditBadgeLabel(badge)"
+                                :title="isLocked ? '點擊切換狀態' : '單擊切換 (綠/紅/灰)，雙擊修改文字'"
+                                class="min-w-[28px] text-[11px] font-black px-1 py-0.5 rounded cursor-pointer transition select-none text-center"
+                                :class="getBadgeBtnClass(badge.status)">
+                                {{ getBadgeDisplayLabel(badge) }}
+                            </button>
+                            <input 
+                                v-else 
+                                :id="'badge-label-input-' + badge.id"
+                                v-model="badge.editLabelValue"
+                                @blur="saveBadgeLabel(badge)"
+                                @keyup.enter="saveBadgeLabel(badge)"
+                                @keyup.esc="cancelEditBadgeLabel(badge)"
+                                class="w-10 bg-slate-950 border border-blue-400 rounded px-1 py-0.5 text-[11px] text-white text-center font-bold outline-none"
+                            >
+                        </div>
+
+                        <input 
+                            v-model="badge.field1" 
+                            @blur="saveBadge(badge)" 
+                            @keyup.enter="$event.target.blur()"
+                            :disabled="isLocked"
+                            placeholder="名稱" 
+                            class="w-14 bg-black/50 border border-white/25 rounded px-1.5 py-0.5 text-xs text-white text-center font-semibold focus:border-white focus:bg-black/70 outline-none placeholder-white/40 disabled:border-transparent disabled:bg-transparent"
+                        >
+
+                        <input 
+                            v-model="badge.field2" 
+                            @blur="saveBadge(badge)" 
+                            @keyup.enter="$event.target.blur()"
+                            :disabled="isLocked"
+                            placeholder="數值" 
+                            class="w-16 bg-black/50 border border-white/25 rounded px-1.5 py-0.5 text-xs text-yellow-300 text-center font-mono font-bold focus:border-white focus:bg-black/70 outline-none placeholder-white/40 disabled:border-transparent disabled:bg-transparent"
+                        >
+
+                        <button 
+                            v-if="!isLocked"
+                            @click="deleteBadge(badge.id)" 
+                            class="text-white/50 hover:text-white text-xs px-0.5 transition opacity-0 group-hover:opacity-100 cursor-pointer" 
+                            title="刪除此指標">✕</button>
+                    </div>
+
+                    <button 
+                        v-if="!isLocked"
+                        @click="addBadge" 
+                        class="text-xs px-2.5 py-1 border border-dashed rounded-lg transition flex items-center gap-1 cursor-pointer shadow-sm"
+                        :class="masterStatus === 'green' ? 'bg-emerald-950/60 border-emerald-400/60 text-emerald-200 hover:text-white hover:bg-emerald-900' : (masterStatus === 'yellow' ? 'bg-amber-950/60 border-amber-400/60 text-amber-200 hover:text-white hover:bg-amber-900' : 'bg-slate-950 hover:bg-slate-850 border-slate-700 hover:border-emerald-500 text-slate-300 hover:text-white')">
+                        <span class="font-bold text-sm" :class="masterStatus === 'green' ? 'text-white' : (masterStatus === 'yellow' ? 'text-amber-300' : 'text-emerald-400')">+</span> 加指標
+                    </button>
+                </div>
+            </div>
+
+            <!-- 2. 大看板 + 縮放 + 鎖定 -->
+            <div 
+                class="border rounded-xl px-3.5 py-2.5 shadow-xl flex-shrink-0 flex items-center justify-between transition-all duration-500"
+                :class="panelBoxClass"
+            >
+                <div class="flex flex-col justify-center">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-bold tracking-wider uppercase" 
+                              :class="masterStatus === 'green' ? 'text-emerald-200' : (masterStatus === 'yellow' ? 'text-amber-200' : 'text-slate-400')">
+                            當前分頁：
+                        </span>
+                        <span class="text-sm font-semibold flex items-center gap-1.5" 
+                              :class="masterStatus === 'green' ? 'text-white font-bold' : (masterStatus === 'yellow' ? 'text-amber-300 font-bold' : 'text-blue-400')">
+                            <span>{{ activeTab?.name }}</span>
+                            <span v-if="activeTab?.tab_type === 'wizard'" class="text-[10px] bg-indigo-950 text-indigo-300 border border-indigo-700/60 px-1.5 py-0.2 rounded font-mono font-normal">
+                                SOP 流程導引
+                            </span>
+                        </span>
+                        <span 
+                            v-if="isLocked" 
+                            class="text-[10px] px-1.5 py-0.5 rounded font-mono"
+                            :class="masterStatus === 'green' ? 'bg-emerald-950 text-emerald-200 border border-emerald-600' : (masterStatus === 'yellow' ? 'bg-amber-950 text-amber-200 border border-amber-600' : 'bg-amber-950/80 text-amber-300 border border-amber-700/60')">
+                            LOCKED
+                        </span>
+                    </div>
+
+                    <div class="text-lg font-black tracking-wide" 
+                         :class="masterStatus === 'green' ? 'text-emerald-200 drop-shadow-[0_0_8px_rgba(74,222,128,0.5)]' : (masterStatus === 'yellow' ? 'text-yellow-300 drop-shadow-[0_0_8px_rgba(250,204,21,0.5)]' : 'text-rose-400')">
+                        <span v-if="masterStatus === 'green'">🟢 PASS (條件完全達成)</span>
+                        <span v-else-if="masterStatus === 'yellow'">🟡 WARN (滿足正向，但有反向警戒)</span>
+                        <span v-else>🔴 HOLD (未達標)</span>
+                    </div>
+
+                    <div class="flex flex-wrap gap-x-3 gap-y-0.5 text-xs mt-0.5" 
+                         :class="masterStatus === 'green' ? 'text-emerald-200/90' : (masterStatus === 'yellow' ? 'text-amber-200/90' : 'text-slate-400')">
+                        <template v-if="activeTab?.tab_type !== 'wizard'">
+                            <span>反向 ON: <b class="font-mono text-sm" :class="reverseActiveCount > 0 ? 'text-rose-400 font-bold animate-pulse' : 'text-fuchsia-300'">{{ reverseActiveCount }}</b></span>
+                            <span>主要 ON: <b class="font-mono text-sm" :class="masterStatus === 'green' ? 'text-amber-300 font-bold' : 'text-amber-400'">{{ primaryActiveCount }}</b></span>
+                            <span>次要 ON: <b class="font-mono text-sm" :class="masterStatus === 'green' ? 'text-cyan-300 font-bold' : 'text-cyan-400'">{{ secondaryActiveCount }}</b></span>
+                            <span>合共: <b class="font-mono text-sm text-white font-bold">{{ totalActiveCount }}</b></span>
+                        </template>
+                        <template v-else>
+                            <span v-if="!isSummaryPage">本步驟項目: <b class="font-mono text-sm text-indigo-300">{{ currentStepItems.length }}</b></span>
+                            <span v-if="!isSummaryPage">本步驟達成: <b class="font-mono text-sm text-emerald-400 font-bold">{{ currentStepActiveCount }}</b></span>
+                            <span>SOP 總完成: <b class="font-mono text-sm text-emerald-400 font-bold">{{ wizardTotalActiveCount }}/{{ wizardTotalItemsCount }}</b></span>
+                            <span>達成率: <b class="font-mono text-sm text-amber-300 font-bold">{{ wizardTotalItemsCount > 0 ? Math.round((wizardTotalActiveCount / wizardTotalItemsCount) * 100) : 0 }}%</b></span>
+                        </template>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <div class="flex items-center border rounded-lg p-0.5 shadow-inner"
+                         :class="masterStatus === 'green' ? 'bg-emerald-950/80 border-emerald-500/50' : (masterStatus === 'yellow' ? 'bg-amber-950/80 border-amber-500/50' : 'bg-slate-950/90 border-slate-800')">
+                        <button @click="zoomOut" class="px-2 py-1 text-xs font-bold rounded transition cursor-pointer"
+                                :class="masterStatus === 'green' ? 'text-emerald-200 hover:text-white hover:bg-emerald-800' : (masterStatus === 'yellow' ? 'text-amber-200 hover:text-white hover:bg-amber-800' : 'text-slate-400 hover:text-white hover:bg-slate-800')">A-</button>
+                        <button @click="resetZoom" class="px-1.5 py-1 text-xs font-mono transition cursor-pointer"
+                                :class="masterStatus === 'green' ? 'text-emerald-300 hover:text-white' : (masterStatus === 'yellow' ? 'text-amber-300 hover:text-white' : 'text-slate-400 hover:text-blue-400')">{{ zoomLevel }}%</button>
+                        <button @click="zoomIn" class="px-2 py-1 text-xs font-bold rounded transition cursor-pointer"
+                                :class="masterStatus === 'green' ? 'text-emerald-200 hover:text-white hover:bg-emerald-800' : (masterStatus === 'yellow' ? 'text-amber-200 hover:text-white hover:bg-amber-800' : 'text-slate-400 hover:text-white hover:bg-slate-800')">A+</button>
+                    </div>
+
+                    <button 
+                        @click="toggleLock" 
+                        class="p-1.5 sm:px-2 sm:py-1.5 rounded-lg border transition-all duration-200 cursor-pointer flex items-center gap-1 text-xs font-semibold"
+                        :class="isLocked 
+                            ? (masterStatus === 'green' ? 'bg-emerald-900 text-emerald-100 border-emerald-500 shadow-[0_0_10px_rgba(34,197,94,0.3)]' : (masterStatus === 'yellow' ? 'bg-amber-900 text-amber-100 border-amber-500 shadow-[0_0_10px_rgba(234,179,8,0.3)]' : 'bg-amber-950/60 text-amber-300 border-amber-600/80 shadow-[0_0_8px_rgba(245,158,11,0.2)]'))
+                            : (masterStatus === 'green' ? 'bg-emerald-950/80 text-emerald-200 border-emerald-600 hover:bg-emerald-900' : (masterStatus === 'yellow' ? 'bg-amber-950/80 text-amber-200 border-amber-600 hover:bg-amber-900' : 'bg-slate-800/80 text-slate-300 border-slate-700 hover:border-slate-500 hover:text-white'))">
+                        <span class="text-sm">{{ isLocked ? '🔒' : '🔓' }}</span>
+                        <span class="hidden sm:inline text-xs">{{ isLocked ? '已鎖定' : '編輯中' }}</span>
+                    </button>
+
+                    <div class="flex items-center gap-1.5 bg-black/40 border border-slate-800 px-2 py-1 rounded-lg">
+                        <span class="text-xs text-blue-400 font-mono">👤 {{ currentUser }}</span>
+                        <button @click="logout" title="登出" class="text-xs text-slate-400 hover:text-rose-400 font-bold ml-1 cursor-pointer">⎋</button>
+                    </div>
+
+                    <div 
+                        class="big-light-circle rounded-full transition-all duration-500 flex items-center justify-center font-black tracking-wider text-xs flex-shrink-0"
+                        :class="bigLightClass">
+                        {{ masterStatus === 'green' ? 'PASS' : (masterStatus === 'yellow' ? 'WARN' : 'HOLD') }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. Tabs Bar -->
+            <div class="flex items-center gap-1.5 overflow-x-auto custom-scrollbar pb-0.5 flex-shrink-0">
+                <div 
+                    v-for="(tab, index) in tabs" 
+                    :key="tab.id"
+                    :draggable="!isLocked && !tab.isEditing"
+                    @dragstart="onTabDragStart(index, $event)"
+                    @dragover.prevent="onTabDragOver(index, $event)"
+                    @dragleave="onTabDragLeave(index)"
+                    @drop.prevent="onTabDrop(index)"
+                    @dragend="onTabDragEnd"
+                    @click="handleTabClick(tab.id)"
+                    class="group relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all duration-150 flex-shrink-0 select-none"
+                    :class="[
+                        getTabStatusClass(tab.id),
+                        activeTabId === tab.id ? 'tab-active' : 'opacity-80 hover:opacity-100',
+                        draggedTabIndex === index ? 'is-dragging' : '',
+                        dragTargetTabIndex === index ? 'is-drag-target' : '',
+                        isLocked ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing'
+                    ]"
+                    :title="isLocked ? '' : '拖曳可左右排序，點擊✏️或雙擊文字可改名'"
+                >
+                    <span 
+                        class="w-2 h-2 rounded-full flex-shrink-0 transition-colors duration-300 pointer-events-none"
+                        :class="getTabDotClass(tab.id)">
+                    </span>
+
+                    <span 
+                        v-if="!tab.isEditing" 
+                        @dblclick.stop="!isLocked && startEditTab(tab)"
+                        class="font-medium tracking-wide">
+                        {{ tab.name }}
+                    </span>
+
+                    <input 
+                        v-else 
+                        :id="'tab-input-' + tab.id"
+                        v-model="tab.editName" 
+                        @blur="saveEditTab(tab)" 
+                        @keyup.enter="saveEditTab(tab)" 
+                        @keyup.esc="cancelEditTab(tab)"
+                        @click.stop
+                        class="bg-slate-950 border border-blue-400 rounded px-1.5 py-0.5 text-xs text-white outline-none w-24 cursor-text font-bold"
+                    >
+
+                    <div v-if="!isLocked" class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition z-10 ml-0.5">
+                        <button 
+                            v-if="!tab.isEditing"
+                            @click.stop="startEditTab(tab)" 
+                            class="text-slate-400 hover:text-amber-300 text-xs transition cursor-pointer" 
+                            title="修改名稱">✏</button>
+                        <button 
+                            @click.stop="duplicateTab(tab.id)" 
+                            class="text-slate-400 hover:text-blue-300 text-xs transition cursor-pointer" 
+                            title="複製分頁">❐</button>
+                        <button 
+                            v-if="tabs.length > 1" 
+                            @click.stop="deleteTab(tab.id)" 
+                            class="text-slate-400 hover:text-rose-300 text-xs transition cursor-pointer" 
+                            title="刪除分頁">✕</button>
+                    </div>
+                </div>
+
+                <div v-if="!isLocked" class="flex items-center gap-1 flex-shrink-0">
+                    <button 
+                        @click="addTab('wizard')" 
+                        class="px-2 py-1.5 rounded-lg text-xs border border-dashed transition flex-shrink-0 cursor-pointer bg-indigo-950/70 border-indigo-700 hover:border-indigo-400 text-indigo-200 hover:text-white">
+                        + SOP流程導引
+                    </button>
+                    <button 
+                        @click="addTab('matrix')" 
+                        class="px-2 py-1.5 rounded-lg text-xs border border-dashed transition flex-shrink-0 cursor-pointer bg-slate-900 border-slate-700 hover:border-blue-500 text-slate-300 hover:text-white">
+                        + 矩陣分頁
+                    </button>
+                </div>
+            </div>
+
+            <!-- 4. 新增 Item 列 (僅矩陣分頁顯示) -->
+            <div 
+                v-if="!isLocked && activeTab?.tab_type !== 'wizard'" 
+                class="border rounded-lg p-1.5 flex gap-2 items-center flex-shrink-0 transition-all duration-500"
+                :class="masterStatus === 'green' ? 'bg-emerald-950/40 border-emerald-500/40' : (masterStatus === 'yellow' ? 'bg-amber-950/40 border-amber-500/40' : 'bg-slate-900/90 border-slate-800')"
+            >
+                <select v-model="newCategory" 
+                        class="border text-xs rounded-md px-2 py-1 outline-none focus:border-blue-500"
+                        :class="masterStatus === 'green' ? 'bg-slate-950 border-emerald-500/40 text-emerald-100' : (masterStatus === 'yellow' ? 'bg-slate-950 border-amber-500/40 text-amber-100' : 'bg-slate-950 border-slate-700 text-slate-200')">
+                    <option value="reverse">🛑 反向組</option>
+                    <option value="primary">⭐️ 主要組</option>
+                    <option value="secondary">⚡️ 次要組</option>
+                </select>
+                <input 
+                    v-model="newItemTitle" 
+                    @keyup.enter="addItem" 
+                    :placeholder="'在 [' + (activeTab?.name || '') + '] 新增項目...'" 
+                    class="flex-1 border rounded-md px-3 py-1 text-xs text-white focus:outline-none focus:border-blue-500 placeholder-slate-400"
+                    :class="masterStatus === 'green' ? 'bg-black/60 border-emerald-500/40' : (masterStatus === 'yellow' ? 'bg-black/60 border-amber-500/40' : 'bg-slate-950 border-slate-700')"
+                >
+                <button 
+                    @click="addItem" 
+                    class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded-md text-xs font-medium transition flex-shrink-0 cursor-pointer">
+                    新增
+                </button>
+            </div>
+
+            <!-- ======================================================== -->
+            <!-- 5A. 流程導引模式 (Wizard Mode: 3個FIELD + Tick ON/OFF) -->
+            <!-- ======================================================== -->
+            <div v-if="activeTab?.tab_type === 'wizard'" class="flex-1 flex flex-col min-h-0 border rounded-xl p-3 shadow-xl transition-all duration-500"
+                 :class="masterStatus === 'green' ? 'panel-green-mode' : (masterStatus === 'yellow' ? 'panel-yellow-mode' : 'bg-slate-900/90 border-indigo-500/30')">
+                
+                <!-- 導航列 -->
+                <div class="flex items-center justify-between border-b pb-2 mb-2 flex-shrink-0 border-slate-800">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-black uppercase text-indigo-400 flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full" :class="isSummaryPage ? 'bg-amber-400' : 'bg-indigo-500'"></span>
+                            {{ isSummaryPage ? '總結頁' : `步驟 ${currentWizardPageIndex + 1} / ${totalWizardPagesCount}:` }}
+                        </span>
+                        
+                        <span v-if="isSummaryPage" class="text-sm font-bold text-amber-300">
+                            📊 全流程檢核總結清單 (Summary Matrix)
+                        </span>
+                        <template v-else-if="currentWizardPage">
+                            <span v-if="!currentWizardPage.isEditing" 
+                                  @dblclick="!isLocked && startEditWizardPage(currentWizardPage)"
+                                  class="text-sm font-bold text-white cursor-pointer hover:underline"
+                                  :title="isLocked ? '' : '雙擊可修改標題'">
+                                {{ currentWizardPage.title }}
+                            </span>
+                            <input v-else
+                                   :id="'wizard-page-input-' + currentWizardPage.id"
+                                   v-model="currentWizardPage.editTitle"
+                                   @blur="saveEditWizardPage(currentWizardPage)"
+                                   @keyup.enter="saveEditWizardPage(currentWizardPage)"
+                                   @keyup.esc="cancelEditWizardPage(currentWizardPage)"
+                                   class="bg-slate-950 border border-indigo-400 rounded px-2 py-0.5 text-xs text-white outline-none w-48">
+                        </template>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <button 
+                            @click="prevWizardPage" 
+                            :disabled="currentWizardPageIndex === 0"
+                            class="px-3 py-1 rounded-lg text-xs font-bold border transition cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed bg-slate-950 border-slate-700 hover:border-indigo-400 text-slate-200 hover:text-white">
+                            ◀ 上一頁
+                        </button>
+                        <button 
+                            @click="nextWizardPage" 
+                            :disabled="currentWizardPageIndex >= totalWizardPagesCount - 1"
+                            class="px-3 py-1 rounded-lg text-xs font-bold border transition cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed bg-indigo-600 border-indigo-500 hover:bg-indigo-500 text-white shadow-md">
+                            {{ currentWizardPageIndex === totalWizardPagesCount - 2 ? '前往總結 ▶' : '下一頁 ▶' }}
+                        </button>
+
+                        <div v-if="!isLocked" class="flex items-center gap-1 border-l border-slate-700 pl-2">
+                            <button 
+                                @click="addWizardPage" 
+                                class="px-2.5 py-1 rounded-lg text-xs font-bold border border-dashed border-indigo-500/80 bg-indigo-950/60 text-indigo-300 hover:bg-indigo-900 hover:text-white transition cursor-pointer"
+                                title="在最後總結頁之前插入新的步驟頁面">
+                                ＋ 加下一頁
+                            </button>
+                            <button 
+                                v-if="!isSummaryPage && wizardPages.length > 1 && currentWizardPage" 
+                                @click="deleteCurrentWizardPage" 
+                                class="px-2 py-1 rounded-lg text-xs border border-rose-800 bg-rose-950/60 text-rose-300 hover:bg-rose-900 transition cursor-pointer"
+                                title="刪除當前步驟頁">
+                                刪除此頁
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 步驟內新增 Item 列 (3 個欄位) -->
+                <div v-if="!isLocked && !isSummaryPage && currentWizardPage" class="flex items-center gap-2 mb-2 flex-shrink-0">
+                    <input 
+                        v-model="newWizardItem.field1" 
+                        placeholder="欄位 1: 條件 / 名稱 (例如: EMA 順勢)" 
+                        class="flex-1 bg-black/60 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-indigo-500 placeholder-slate-500">
+                    <input 
+                        v-model="newWizardItem.field2" 
+                        placeholder="欄位 2: 數值 / 設定 (例如: 20 > 50)" 
+                        class="w-36 bg-black/60 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-yellow-300 font-mono font-bold focus:outline-none focus:border-indigo-500 placeholder-slate-500">
+                    <input 
+                        v-model="newWizardItem.field3" 
+                        @keyup.enter="addWizardItem"
+                        placeholder="欄位 3: 備註 / 說明 (例如: 實體收穿)" 
+                        class="flex-1 bg-black/60 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-indigo-500 placeholder-slate-500">
+                    <button 
+                        @click="addWizardItem" 
+                        class="bg-indigo-600 hover:bg-indigo-500 text-white px-3.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer flex-shrink-0">
+                        新增本頁項目
+                    </button>
+                </div>
+
+                <!-- 步驟頁項目清單 (每項含 3 個 FIELD + Tick ON/OFF 按鈕) -->
+                <div v-if="!isSummaryPage" class="flex-1 overflow-y-auto space-y-1.5 pr-1 custom-scrollbar min-h-0">
+                    <div 
+                        v-for="(item, wIdx) in currentStepItems" 
+                        :key="item.id"
+                        class="flex items-center justify-between border px-3 py-2 rounded-lg transition-all select-none gap-2"
+                        :class="[
+                            itemRowClass,
+                            item.is_active === 1 ? 'border-emerald-500/40 bg-emerald-950/20' : ''
+                        ]"
+                    >
+                        <div class="flex items-center gap-2 flex-1 min-w-0">
+                            <!-- 欄位 1: 條件名稱 -->
+                            <input 
+                                v-model="item.field1" 
+                                @blur="saveItemFields(item)" 
+                                @keyup.enter="$event.target.blur()"
+                                :disabled="isLocked"
+                                placeholder="條件名稱" 
+                                class="flex-1 bg-black/40 border border-white/20 rounded px-2 py-1 text-xs text-white font-medium focus:border-indigo-400 focus:bg-black/80 outline-none placeholder-white/30 disabled:border-transparent disabled:bg-transparent"
+                            >
+
+                            <!-- 欄位 2: 數值 / 設定 -->
+                            <input 
+                                v-model="item.field2" 
+                                @blur="saveItemFields(item)" 
+                                @keyup.enter="$event.target.blur()"
+                                :disabled="isLocked"
+                                placeholder="數值/設定" 
+                                class="w-32 bg-black/40 border border-white/20 rounded px-2 py-1 text-xs text-yellow-300 font-mono font-bold focus:border-indigo-400 focus:bg-black/80 outline-none text-center placeholder-white/30 disabled:border-transparent disabled:bg-transparent"
+                            >
+
+                            <!-- 欄位 3: 備註 / 說明 -->
+                            <input 
+                                v-model="item.field3" 
+                                @blur="saveItemFields(item)" 
+                                @keyup.enter="$event.target.blur()"
+                                :disabled="isLocked"
+                                placeholder="備註/說明" 
+                                class="flex-1 bg-black/40 border border-white/20 rounded px-2 py-1 text-xs text-slate-300 focus:border-indigo-400 focus:bg-black/80 outline-none placeholder-white/30 disabled:border-transparent disabled:bg-transparent"
+                            >
+                        </div>
+
+                        <!-- 🌟 右側純 Tick Icon 按鈕 (未按暗灰 OFF，按下亮綠 ON) -->
+                        <div class="flex items-center gap-1.5 flex-shrink-0">
+                            <button 
+                                @click="toggleTick(item)" 
+                                class="w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm transition-all duration-300 cursor-pointer shadow-md select-none"
+                                :class="item.is_active === 1 ? 'tick-btn-on' : 'tick-btn-off'"
+                                :title="item.is_active === 1 ? '已達成 (點擊關閉)' : '未達成 (點擊開啟)'">
+                                ✔
+                            </button>
+                            <button 
+                                v-if="!isLocked" 
+                                @click="deleteItem(item.id)" 
+                                class="text-slate-400 hover:text-rose-400 px-1 text-xs transition cursor-pointer"
+                                title="刪除此項目">✕</button>
+                        </div>
+                    </div>
+
+                    <div v-if="currentStepItems.length === 0" class="text-center text-slate-500 text-xs py-8">
+                        此步驟頁暫無項目，請在上方 3 個欄位輸入並點擊「新增本頁項目」。
+                    </div>
+                </div>
+
+                <!-- 最後一頁 SUMMARY 總結看板 -->
+                <div v-else class="flex-1 overflow-y-auto space-y-4 pr-1 custom-scrollbar min-h-0">
+                    <div class="grid grid-cols-1 sm:grid-cols-4 gap-2 bg-black/40 border border-slate-800 p-2.5 rounded-xl">
+                        <div class="text-center">
+                            <div class="text-[11px] text-slate-400">總流程步驟</div>
+                            <div class="text-base font-bold text-indigo-300 font-mono">{{ wizardPages.length }} 個頁面</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-[11px] text-slate-400">總檢核項目</div>
+                            <div class="text-base font-bold text-white font-mono">{{ wizardTotalItemsCount }} 項</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-[11px] text-slate-400">已達成 (Tick ON)</div>
+                            <div class="text-base font-bold text-emerald-400 font-mono">{{ wizardTotalActiveCount }} 項</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-[11px] text-slate-400">SOP 達成率</div>
+                            <div class="text-base font-bold font-mono" :class="wizardTotalActiveCount === wizardTotalItemsCount && wizardTotalItemsCount > 0 ? 'text-emerald-400' : 'text-amber-400'">
+                                {{ wizardTotalItemsCount > 0 ? Math.round((wizardTotalActiveCount / wizardTotalItemsCount) * 100) : 0 }}%
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 分步驟彙總展示 -->
+                    <div v-for="(pg, pIdx) in wizardPages" :key="pg.id" class="border border-slate-800/80 rounded-xl p-3 bg-slate-950/40">
+                        <div class="flex items-center justify-between border-b border-slate-800 pb-1.5 mb-2">
+                            <div class="flex items-center gap-1.5">
+                                <span class="text-xs font-mono font-bold text-indigo-400">步驟 {{ pIdx + 1 }}:</span>
+                                <span class="text-xs font-semibold text-slate-200">{{ pg.title }}</span>
+                            </div>
+                            <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-900 border border-slate-700 text-slate-300">
+                                達成: {{ getPageActiveCount(pg.id) }} / {{ getPageItems(pg.id).length }}
+                            </span>
+                        </div>
+
+                        <div class="space-y-1.5">
+                            <div 
+                                v-for="item in getPageItems(pg.id)" 
+                                :key="item.id"
+                                class="flex items-center justify-between border border-slate-800/60 px-3 py-1.5 rounded-lg bg-black/20 gap-2"
+                            >
+                                <div class="flex items-center gap-2 flex-1 min-w-0">
+                                    <span class="flex-1 text-xs text-white font-medium truncate">{{ item.field1 || item.title }}</span>
+                                    <span class="w-28 text-xs text-yellow-300 font-mono font-bold text-center truncate bg-black/50 px-1.5 py-0.5 rounded border border-white/10">{{ item.field2 || '-' }}</span>
+                                    <span class="flex-1 text-xs text-slate-400 truncate">{{ item.field3 || '-' }}</span>
+                                </div>
+                                <button 
+                                    @click="toggleTick(item)" 
+                                    class="w-7 h-7 rounded-lg flex items-center justify-center font-black text-xs transition-all duration-300 cursor-pointer select-none"
+                                    :class="item.is_active === 1 ? 'tick-btn-on' : 'tick-btn-off'">
+                                    ✔
+                                </button>
+                            </div>
+
+                            <div v-if="getPageItems(pg.id).length === 0" class="text-xs text-slate-500 py-1 italic">
+                                本步驟無檢查項目
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 底部步驟頁圓點導覽 -->
+                <div class="flex items-center justify-center gap-1.5 pt-2 border-t border-slate-800/80 flex-shrink-0">
+                    <span 
+                        v-for="(pg, pIdx) in wizardPages" 
+                        :key="pg.id"
+                        @click="currentWizardPageIndex = pIdx"
+                        class="w-2.5 h-2.5 rounded-full cursor-pointer transition-all duration-300"
+                        :class="currentWizardPageIndex === pIdx ? 'bg-indigo-400 w-6 shadow-[0_0_8px_#818cf8]' : 'bg-slate-700 hover:bg-slate-500'"
+                        :title="pg.title"></span>
+                    
+                    <span 
+                        @click="currentWizardPageIndex = wizardPages.length"
+                        class="w-2.5 h-2.5 rounded-full cursor-pointer transition-all duration-300 flex items-center justify-center"
+                        :class="isSummaryPage ? 'bg-amber-400 w-6 shadow-[0_0_8px_#f59e0b]' : 'bg-amber-800/60 hover:bg-amber-600'"
+                        title="總結頁 (Summary)"></span>
+                </div>
+            </div>
+
+            <!-- ======================================================== -->
+            <!-- 5B. 傳統矩陣模式 (Matrix Mode: 反向 -> 主要 -> 次要) -->
+            <!-- ======================================================== -->
+            <div v-else class="flex-1 grid grid-cols-1 md:grid-cols-3 gap-2 min-h-0">
+                
+                <!-- 1. 🛑 反向組 (最左側) -->
+                <div 
+                    class="border rounded-xl p-2.5 flex flex-col min-h-0 shadow-lg transition-all duration-500"
+                    :class="masterStatus === 'green' ? 'panel-green-mode' : (masterStatus === 'yellow' ? 'panel-yellow-mode' : 'bg-slate-900/80 border-fuchsia-500/25')"
+                >
+                    <div class="flex items-center justify-between border-b pb-1.5 mb-1.5 flex-shrink-0 transition-colors"
+                         :class="masterStatus === 'green' ? 'border-emerald-500/40' : (masterStatus === 'yellow' ? 'border-amber-500/40' : 'border-slate-800')">
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-fuchsia-400"></span>
+                            <h3 class="font-bold text-xs text-fuchsia-300">反向組 (Reverse)</h3>
+                        </div>
+                        <span class="text-[10px] px-2 py-0.5 rounded font-mono transition-colors"
+                              :class="reverseActiveCount > 0 ? 'bg-rose-950 text-rose-300 border border-rose-600 font-bold' : 'bg-fuchsia-950 text-fuchsia-300 border border-fuchsia-800/80'">
+                            {{ reverseActiveCount }} ON
+                        </span>
+                    </div>
+
+                    <div class="flex-1 overflow-y-auto space-y-1.5 pr-1 custom-scrollbar min-h-0">
+                        <div 
+                            v-for="(item, rIdx) in currentTabReverseItems" 
+                            :key="item.id" 
+                            @dragover.prevent="onItemDragOver('reverse', rIdx)"
+                            @dragleave="onItemDragLeave('reverse', rIdx)"
+                            @drop.prevent="onItemDrop('reverse', rIdx)"
+                            class="flex items-center justify-between border px-2.5 py-1.5 rounded-lg transition-all select-none"
+                            :class="[
+                                item.is_active === 1 ? 'bg-rose-950/40 border-rose-600/50' : (item.is_active === 2 ? 'bg-amber-950/30 border-amber-600/40' : itemRowClass),
+                                isItemDragging('reverse', rIdx) ? 'is-dragging' : '',
+                                isItemTarget('reverse', rIdx) ? 'is-drag-target' : ''
+                            ]"
+                        >
+                            <div class="flex items-center gap-1.5 flex-1 min-w-0 mr-1.5">
+                                <span 
+                                    v-if="!isLocked"
+                                    draggable="true"
+                                    @dragstart="onItemDragStart('reverse', rIdx, $event)"
+                                    @dragend="onItemDragEnd"
+                                    class="text-slate-500 hover:text-fuchsia-300 cursor-grab active:cursor-grabbing px-0.5 text-xs font-mono select-none"
+                                    title="上下拖曳排序">⠿</span>
+
+                                <button 
+                                    @click="toggleLight(item)" 
+                                    class="w-4 h-4 rounded-full transition-all duration-300 flex-shrink-0 border border-slate-600 cursor-pointer"
+                                    :class="getItemLedClass(item, 'reverse')">
+                                </button>
+                                <span 
+                                    v-if="!item.isEditing" 
+                                    @dblclick="!isLocked && startEdit(item)" 
+                                    class="truncate text-xs font-medium text-white select-none cursor-pointer hover:underline"
+                                    :title="isLocked ? '' : '雙擊修改文字'">
+                                    {{ item.title }}
+                                </span>
+                                <input 
+                                    v-else 
+                                    :id="'input-' + item.id"
+                                    v-model="item.editTitle" 
+                                    @blur="saveEdit(item)" 
+                                    @keyup.enter="saveEdit(item)" 
+                                    @keyup.esc="cancelEdit(item)"
+                                    class="bg-slate-900 border border-blue-500 rounded px-1.5 py-0.5 text-xs text-white w-full outline-none"
+                                >
+                            </div>
+                            <div class="flex items-center gap-1 flex-shrink-0">
+                                <button 
+                                    @click="toggleLight(item)" 
+                                    class="min-w-[32px] text-[10px] px-1.5 py-0.5 rounded font-mono transition cursor-pointer text-center"
+                                    :class="getItemBtnClass(item, 'reverse')">
+                                    {{ getItemStatusText(item) }}
+                                </button>
+                                <button 
+                                    v-if="!isLocked" 
+                                    @click="deleteItem(item.id)" 
+                                    class="text-slate-400 hover:text-rose-400 px-0.5 text-xs transition cursor-pointer">✕</button>
+                            </div>
+                        </div>
+                        <div v-if="currentTabReverseItems.length === 0" class="text-center text-slate-400 text-xs py-4">反向組暫無項目</div>
+                    </div>
+                </div>
+
+                <!-- 2. ⭐️ 主要組 (中間欄) -->
+                <div 
+                    class="border rounded-xl p-2.5 flex flex-col min-h-0 shadow-lg transition-all duration-500"
+                    :class="masterStatus === 'green' ? 'panel-green-mode' : (masterStatus === 'yellow' ? 'panel-yellow-mode' : 'bg-slate-900/80 border-amber-500/25')"
+                >
+                    <div class="flex items-center justify-between border-b pb-1.5 mb-1.5 flex-shrink-0 transition-colors"
+                         :class="masterStatus === 'green' ? 'border-emerald-500/40' : (masterStatus === 'yellow' ? 'border-amber-500/40' : 'border-slate-800')">
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+                            <h3 class="font-bold text-xs text-amber-300">主要組 (Primary)</h3>
+                        </div>
+                        <span class="text-[10px] px-2 py-0.5 rounded font-mono transition-colors"
+                              :class="masterStatus === 'green' ? 'bg-emerald-950 text-emerald-200 border border-emerald-500 font-bold' : (masterStatus === 'yellow' ? 'bg-amber-950 text-amber-200 border border-amber-500 font-bold' : 'bg-amber-950 text-amber-300 border border-amber-800/80')">
+                            {{ primaryActiveCount }} ON
+                        </span>
+                    </div>
+
+                    <div class="flex-1 overflow-y-auto space-y-1.5 pr-1 custom-scrollbar min-h-0">
+                        <div 
+                            v-for="(item, pIdx) in currentTabPrimaryItems" 
+                            :key="item.id" 
+                            @dragover.prevent="onItemDragOver('primary', pIdx)"
+                            @dragleave="onItemDragLeave('primary', pIdx)"
+                            @drop.prevent="onItemDrop('primary', pIdx)"
+                            class="flex items-center justify-between border px-2.5 py-1.5 rounded-lg transition-all select-none"
+                            :class="[
+                                itemRowClass,
+                                isItemDragging('primary', pIdx) ? 'is-dragging' : '',
+                                isItemTarget('primary', pIdx) ? 'is-drag-target' : ''
+                            ]"
+                        >
+                            <div class="flex items-center gap-1.5 flex-1 min-w-0 mr-1.5">
+                                <span 
+                                    v-if="!isLocked"
+                                    draggable="true"
+                                    @dragstart="onItemDragStart('primary', pIdx, $event)"
+                                    @dragend="onItemDragEnd"
+                                    class="text-slate-500 hover:text-amber-300 cursor-grab active:cursor-grabbing px-0.5 text-xs font-mono select-none"
+                                    title="上下拖曳排序">⠿</span>
+
+                                <button 
+                                    @click="toggleLight(item)" 
+                                    class="w-4 h-4 rounded-full transition-all duration-300 flex-shrink-0 border border-slate-600 cursor-pointer"
+                                    :class="getItemLedClass(item, 'primary')">
+                                </button>
+                                <span 
+                                    v-if="!item.isEditing" 
+                                    @dblclick="!isLocked && startEdit(item)" 
+                                    class="truncate text-xs font-medium text-white select-none cursor-pointer hover:underline"
+                                    :title="isLocked ? '' : '雙擊修改文字'">
+                                    {{ item.title }}
+                                </span>
+                                <input 
+                                    v-else 
+                                    :id="'input-' + item.id"
+                                    v-model="item.editTitle" 
+                                    @blur="saveEdit(item)" 
+                                    @keyup.enter="saveEdit(item)" 
+                                    @keyup.esc="cancelEdit(item)"
+                                    class="bg-slate-900 border border-blue-500 rounded px-1.5 py-0.5 text-xs text-white w-full outline-none"
+                                >
+                            </div>
+                            <div class="flex items-center gap-1 flex-shrink-0">
+                                <button 
+                                    @click="toggleLight(item)" 
+                                    class="min-w-[32px] text-[10px] px-1.5 py-0.5 rounded font-mono transition cursor-pointer text-center"
+                                    :class="getItemBtnClass(item, 'primary')">
+                                    {{ getItemStatusText(item) }}
+                                </button>
+                                <button 
+                                    v-if="!isLocked" 
+                                    @click="deleteItem(item.id)" 
+                                    class="text-slate-400 hover:text-rose-400 px-0.5 text-xs transition cursor-pointer">✕</button>
+                            </div>
+                        </div>
+                        <div v-if="currentTabPrimaryItems.length === 0" class="text-center text-slate-400 text-xs py-4">主要組暫無項目</div>
+                    </div>
+                </div>
+
+                <!-- 3. ⚡️ 次要組 (右側欄) -->
+                <div 
+                    class="border rounded-xl p-2.5 flex flex-col min-h-0 shadow-lg transition-all duration-500"
+                    :class="masterStatus === 'green' ? 'panel-green-mode' : (masterStatus === 'yellow' ? 'panel-yellow-mode' : 'bg-slate-900/80 border-cyan-500/25')"
+                >
+                    <div class="flex items-center justify-between border-b pb-1.5 mb-1.5 flex-shrink-0 transition-colors"
+                         :class="masterStatus === 'green' ? 'border-emerald-500/40' : (masterStatus === 'yellow' ? 'border-amber-500/40' : 'border-slate-800')">
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+                            <h3 class="font-bold text-xs text-cyan-300">次要組 (Secondary)</h3>
+                        </div>
+                        <span class="text-[10px] px-2 py-0.5 rounded font-mono transition-colors"
+                              :class="masterStatus === 'green' ? 'bg-emerald-950 text-emerald-200 border border-emerald-500 font-bold' : (masterStatus === 'yellow' ? 'bg-amber-950 text-amber-200 border border-amber-500 font-bold' : 'bg-cyan-950 text-cyan-300 border border-cyan-800/80')">
+                            {{ secondaryActiveCount }} ON
+                        </span>
+                    </div>
+
+                    <div class="flex-1 overflow-y-auto space-y-1.5 pr-1 custom-scrollbar min-h-0">
+                        <div 
+                            v-for="(item, sIdx) in currentTabSecondaryItems" 
+                            :key="item.id" 
+                            @dragover.prevent="onItemDragOver('secondary', sIdx)"
+                            @dragleave="onItemDragLeave('secondary', sIdx)"
+                            @drop.prevent="onItemDrop('secondary', sIdx)"
+                            class="flex items-center justify-between border px-2.5 py-1.5 rounded-lg transition-all select-none"
+                            :class="[
+                                itemRowClass,
+                                isItemDragging('secondary', sIdx) ? 'is-dragging' : '',
+                                isItemTarget('secondary', sIdx) ? 'is-drag-target' : ''
+                            ]"
+                        >
+                            <div class="flex items-center gap-1.5 flex-1 min-w-0 mr-1.5">
+                                <span 
+                                    v-if="!isLocked"
+                                    draggable="true"
+                                    @dragstart="onItemDragStart('secondary', sIdx, $event)"
+                                    @dragend="onItemDragEnd"
+                                    class="text-slate-500 hover:text-cyan-300 cursor-grab active:cursor-grabbing px-0.5 text-xs font-mono select-none"
+                                    title="上下拖曳排序">⠿</span>
+
+                                <button 
+                                    @click="toggleLight(item)" 
+                                    class="w-4 h-4 rounded-full transition-all duration-300 flex-shrink-0 border border-slate-600 cursor-pointer"
+                                    :class="getItemLedClass(item, 'secondary')">
+                                </button>
+                                <span 
+                                    v-if="!item.isEditing" 
+                                    @dblclick="!isLocked && startEdit(item)" 
+                                    class="truncate text-xs font-medium text-white select-none cursor-pointer hover:underline"
+                                    :title="isLocked ? '' : '雙擊修改文字'">
+                                    {{ item.title }}
+                                </span>
+                                <input 
+                                    v-else 
+                                    :id="'input-' + item.id"
+                                    v-model="item.editTitle" 
+                                    @blur="saveEdit(item)" 
+                                    @keyup.enter="saveEdit(item)" 
+                                    @keyup.esc="cancelEdit(item)"
+                                    class="bg-slate-900 border border-blue-500 rounded px-1.5 py-0.5 text-xs text-white w-full outline-none"
+                                >
+                            </div>
+                            <div class="flex items-center gap-1 flex-shrink-0">
+                                <button 
+                                    @click="toggleLight(item)" 
+                                    class="min-w-[32px] text-[10px] px-1.5 py-0.5 rounded font-mono transition cursor-pointer text-center"
+                                    :class="getItemBtnClass(item, 'secondary')">
+                                    {{ getItemStatusText(item) }}
+                                </button>
+                                <button 
+                                    v-if="!isLocked" 
+                                    @click="deleteItem(item.id)" 
+                                    class="text-slate-400 hover:text-rose-400 px-0.5 text-xs transition cursor-pointer">✕</button>
+                            </div>
+                        </div>
+                        <div v-if="currentTabSecondaryItems.length === 0" class="text-center text-slate-400 text-xs py-4">次要組暫無項目</div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, computed, nextTick, onMounted } = Vue;
+
+        createApp({
+            setup() {
+                const currentUser = ref(localStorage.getItem('auth_user') || '');
+                const authToken = ref(localStorage.getItem('auth_token') || '');
+                const authForm = ref({ username: '', password: '' });
+                const authError = ref('');
+
+                const tabs = ref([]);
+                const activeTabId = ref(null);
+                const items = ref([]);
+                const badges = ref([]);
+                const newItemTitle = ref('');
+                const newCategory = ref('reverse');
+
+                // Wizard 專用狀態
+                const wizardPages = ref([]);
+                const currentWizardPageIndex = ref(0);
+                const newWizardItem = ref({ field1: '', field2: '', field3: '' });
+
+                // 拖曳狀態管理
+                const draggedTabIndex = ref(null);
+                const dragTargetTabIndex = ref(null);
+                let isTabDraggingActive = false;
+                const badgeDragState = ref({ fromIndex: null, targetIndex: null });
+                const itemDragState = ref({ category: null, fromIndex: null, targetIndex: null });
+
+                const zoomLevel = ref(parseInt(localStorage.getItem('ui_zoom') || '100'));
+
+                const applyRootFontSize = (level) => {
+                    document.documentElement.style.fontSize = `${(16 * (level / 100)).toFixed(2)}px`;
+                };
+
+                const zoomIn = () => {
+                    if (zoomLevel.value < 140) {
+                        zoomLevel.value += 5;
+                        applyRootFontSize(zoomLevel.value);
+                        localStorage.setItem('ui_zoom', zoomLevel.value.toString());
+                    }
+                };
+
+                const zoomOut = () => {
+                    if (zoomLevel.value > 75) {
+                        zoomLevel.value -= 5;
+                        applyRootFontSize(zoomLevel.value);
+                        localStorage.setItem('ui_zoom', zoomLevel.value.toString());
+                    }
+                };
+
+                const resetZoom = () => {
+                    zoomLevel.value = 100;
+                    applyRootFontSize(100);
+                    localStorage.setItem('ui_zoom', '100');
+                };
+
+                const isLocked = ref(localStorage.getItem('ui_locked') === 'true');
+
+                const toggleLock = () => {
+                    isLocked.value = !isLocked.value;
+                    localStorage.setItem('ui_locked', isLocked.value ? 'true' : 'false');
+                };
+
+                const apiFetch = async (url, options = {}) => {
+                    const headers = options.headers || {};
+                    if (authToken.value) {
+                        headers['Authorization'] = `Bearer ${authToken.value}`;
+                    }
+                    headers['Content-Type'] = 'application/json';
+                    const res = await fetch(url, { ...options, headers });
+                    if (res.status === 401) {
+                        logout();
+                    }
+                    return res;
+                };
+
+                const handleAuth = async (mode = 'login') => {
+                    authError.value = '';
+                    if (!authForm.value.username || !authForm.value.password) {
+                        authError.value = '請填寫用戶名及密碼';
+                        return;
+                    }
+
+                    const endpoint = mode === 'register' ? '/api/auth/register' : '/api/auth/login';
+                    try {
+                        const res = await fetch(endpoint, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(authForm.value)
+                        });
+                        const data = await res.json();
+                        if (!res.ok) {
+                            authError.value = data.detail || '認證失敗';
+                            return;
+                        }
+
+                        currentUser.value = data.username;
+                        authToken.value = data.token;
+                        localStorage.setItem('auth_user', data.username);
+                        localStorage.setItem('auth_token', data.token);
+
+                        authForm.value = { username: '', password: '' };
+                        await loadUserData();
+                    } catch (e) {
+                        authError.value = '網絡連線錯誤';
+                    }
+                };
+
+                const logout = () => {
+                    currentUser.value = '';
+                    authToken.value = '';
+                    localStorage.removeItem('auth_user');
+                    localStorage.removeItem('auth_token');
+                    tabs.value = [];
+                    items.value = [];
+                    badges.value = [];
+                    wizardPages.value = [];
+                    activeTabId.value = null;
+                };
+
+                const fetchTabs = async () => {
+                    const res = await apiFetch('/api/tabs');
+                    if (res && res.ok) {
+                        const data = await res.json();
+                        tabs.value = data.map(t => ({ ...t, isEditing: false, editName: t.name }));
+                        if (tabs.value.length > 0 && (!activeTabId.value || !tabs.value.find(t => t.id === activeTabId.value))) {
+                            activeTabId.value = tabs.value[0].id;
+                        }
+                    }
+                };
+
+                const fetchItems = async () => {
+                    const res = await apiFetch('/api/items');
+                    if (res && res.ok) {
+                        const data = await res.json();
+                        items.value = data.map(d => ({ 
+                            ...d, 
+                            isEditing: false, 
+                            editTitle: d.title,
+                            field1: d.field1 || d.title || '',
+                            field2: d.field2 || '',
+                            field3: d.field3 || ''
+                        }));
+                    }
+                };
+
+                const fetchBadges = async () => {
+                    const res = await apiFetch('/api/badges');
+                    if (res && res.ok) {
+                        const data = await res.json();
+                        badges.value = data.map(b => ({
+                            ...b,
+                            isEditingLabel: false,
+                            editLabelValue: b.status === 'green' ? (b.label_green || '升') : (b.status === 'red' ? (b.label_red || '跌') : (b.label_gray || '平'))
+                        }));
+                    }
+                };
+
+                const fetchWizardPages = async () => {
+                    if (!activeTabId.value || activeTab.value?.tab_type !== 'wizard') {
+                        wizardPages.value = [];
+                        return;
+                    }
+                    const res = await apiFetch(`/api/tabs/${activeTabId.value}/pages`);
+                    if (res && res.ok) {
+                        const data = await res.json();
+                        wizardPages.value = data.map(p => ({ ...p, isEditing: false, editTitle: p.title }));
+                        if (currentWizardPageIndex.value > wizardPages.value.length) {
+                            currentWizardPageIndex.value = wizardPages.value.length;
+                        }
+                    }
+                };
+
+                const loadUserData = async () => {
+                    if (!authToken.value) return;
+                    await fetchTabs();
+                    await fetchItems();
+                    await fetchBadges();
+                    await fetchWizardPages();
+                };
+
+                const activeTab = computed(() => tabs.value.find(t => t.id === activeTabId.value));
+                
+                // 矩陣過濾 (只統計 page_id == 0 的矩陣項)
+                const currentTabItems = computed(() => items.value.filter(i => i.tab_id === activeTabId.value));
+                const currentTabPrimaryItems = computed(() => currentTabItems.value.filter(i => i.category === 'primary' && (!i.page_id || i.page_id === 0)));
+                const currentTabSecondaryItems = computed(() => currentTabItems.value.filter(i => i.category === 'secondary' && (!i.page_id || i.page_id === 0)));
+                const currentTabReverseItems = computed(() => currentTabItems.value.filter(i => i.category === 'reverse' && (!i.page_id || i.page_id === 0)));
+
+                const primaryActiveCount = computed(() => currentTabPrimaryItems.value.filter(i => i.is_active === 1).length);
+                const secondaryActiveCount = computed(() => currentTabSecondaryItems.value.filter(i => i.is_active === 1).length);
+                const reverseActiveCount = computed(() => currentTabReverseItems.value.filter(i => i.is_active === 1).length);
+
+                // Wizard 頁數與總結狀態判定
+                const totalWizardPagesCount = computed(() => wizardPages.value.length + 1);
+                const isSummaryPage = computed(() => currentWizardPageIndex.value === wizardPages.value.length);
+
+                const currentWizardPage = computed(() => {
+                    if (isSummaryPage.value) return null;
+                    return wizardPages.value[currentWizardPageIndex.value] || null;
+                });
+
+                const currentStepItems = computed(() => {
+                    if (!currentWizardPage.value) return [];
+                    return items.value.filter(i => i.tab_id === activeTabId.value && i.page_id === currentWizardPage.value.id);
+                });
+                const currentStepActiveCount = computed(() => currentStepItems.value.filter(i => i.is_active === 1).length);
+                
+                const wizardTotalItems = computed(() => items.value.filter(i => i.tab_id === activeTabId.value && i.page_id > 0));
+                const wizardTotalItemsCount = computed(() => wizardTotalItems.value.length);
+                const wizardTotalActiveCount = computed(() => wizardTotalItems.value.filter(i => i.is_active === 1).length);
+
+                const getPageItems = (pageId) => items.value.filter(i => i.tab_id === activeTabId.value && i.page_id === pageId);
+                const getPageActiveCount = (pageId) => getPageItems(pageId).filter(i => i.is_active === 1).length;
+
+                const totalActiveCount = computed(() => {
+                    if (activeTab.value?.tab_type === 'wizard') return wizardTotalActiveCount.value;
+                    return primaryActiveCount.value + secondaryActiveCount.value + reverseActiveCount.value;
+                });
+
+                // 🌟 三色信號燈邏輯 (完全隔離：SOP 只算 SOP 內部完成度，不波及矩陣或其他分頁)
+                const calculateTabStatus = (tabId) => {
+                    const targetTab = tabs.value.find(t => t.id === tabId);
+                    if (targetTab?.tab_type === 'wizard') {
+                        const tabItms = items.value.filter(i => i.tab_id === tabId && i.page_id > 0);
+                        if (tabItms.length === 0) return 'red';
+                        const onCount = tabItms.filter(i => i.is_active === 1).length;
+                        return (onCount === tabItms.length) ? 'green' : (onCount > 0 ? 'yellow' : 'red');
+                    } else {
+                        // 傳統矩陣只看 page_id == 0 的三大組項目
+                        const tabItems = items.value.filter(i => i.tab_id === tabId && (!i.page_id || i.page_id === 0));
+                        const P = tabItems.filter(i => i.category === 'primary' && i.is_active === 1).length;
+                        const S = tabItems.filter(i => i.category === 'secondary' && i.is_active === 1).length;
+                        const R = tabItems.filter(i => i.category === 'reverse' && i.is_active === 1).length;
+                        const isPositivePass = (P >= 3) || (P >= 1 && (P + S) >= 3);
+                        if (isPositivePass) {
+                            if (R > 0) return 'yellow';
+                            return 'green';
+                        }
+                        return 'red';
+                    }
+                };
+
+                const masterStatus = computed(() => {
+                    if (!activeTabId.value) return 'red';
+                    return calculateTabStatus(activeTabId.value);
+                });
+
+                const appBackgroundClass = computed(() => {
+                    if (masterStatus.value === 'green') return 'app-bg-green-mode';
+                    if (masterStatus.value === 'yellow') return 'app-bg-yellow-mode';
+                    return 'app-bg-normal';
+                });
+
+                const panelBoxClass = computed(() => {
+                    if (masterStatus.value === 'green') return 'panel-green-mode';
+                    if (masterStatus.value === 'yellow') return 'panel-yellow-mode';
+                    return 'bg-slate-900 border-slate-800';
+                });
+
+                const itemRowClass = computed(() => {
+                    if (masterStatus.value === 'green') return 'item-row-green-mode hover:border-emerald-400';
+                    if (masterStatus.value === 'yellow') return 'item-row-yellow-mode hover:border-amber-400';
+                    return 'bg-slate-950/70 border-slate-800/80 hover:border-slate-700';
+                });
+
+                const bigLightClass = computed(() => {
+                    if (masterStatus.value === 'green') return 'big-green text-white';
+                    if (masterStatus.value === 'yellow') return 'big-yellow font-black';
+                    return 'big-red text-white';
+                });
+
+                const getTabStatusClass = (tabId) => {
+                    const st = calculateTabStatus(tabId);
+                    if (st === 'green') return 'tab-status-green';
+                    if (st === 'yellow') return 'tab-status-yellow';
+                    return 'tab-status-red';
+                };
+
+                const getTabDotClass = (tabId) => {
+                    const st = calculateTabStatus(tabId);
+                    if (st === 'green') return 'bg-emerald-400 shadow-[0_0_6px_#22c55e]';
+                    if (st === 'yellow') return 'bg-amber-400 shadow-[0_0_6px_#eab308]';
+                    return 'bg-rose-500 shadow-[0_0_6px_#ef4444]';
+                };
+
+                // --- Wizard 操作 ---
+                const nextWizardPage = () => {
+                    if (currentWizardPageIndex.value < totalWizardPagesCount.value - 1) {
+                        currentWizardPageIndex.value++;
+                    }
+                };
+
+                const prevWizardPage = () => {
+                    if (currentWizardPageIndex.value > 0) {
+                        currentWizardPageIndex.value--;
+                    }
+                };
+
+                const addWizardPage = async () => {
+                    if (isLocked.value || !activeTabId.value) return;
+                    const res = await apiFetch(`/api/tabs/${activeTabId.value}/pages`, {
+                        method: 'POST',
+                        body: JSON.stringify({ title: '新頁面' })
+                    });
+                    if (res && res.ok) {
+                        await fetchWizardPages();
+                        currentWizardPageIndex.value = wizardPages.value.length - 1;
+                    }
+                };
+
+                const startEditWizardPage = (pg) => {
+                    pg.editTitle = pg.title;
+                    pg.isEditing = true;
+                    nextTick(() => {
+                        const el = document.getElementById('wizard-page-input-' + pg.id);
+                        if (el) { el.focus(); el.select(); }
+                    });
+                };
+
+                const cancelEditWizardPage = (pg) => { pg.isEditing = false; };
+
+                const saveEditWizardPage = async (pg) => {
+                    if (!pg.isEditing) return;
+                    pg.isEditing = false;
+                    const trimmed = pg.editTitle.trim();
+                    if (trimmed && trimmed !== pg.title) {
+                        pg.title = trimmed;
+                        await apiFetch(`/api/tab_pages/${pg.id}`, {
+                            method: 'PUT',
+                            body: JSON.stringify({ title: trimmed })
+                        });
+                    }
+                };
+
+                const deleteCurrentWizardPage = async () => {
+                    if (isLocked.value || !currentWizardPage.value) return;
+                    if (!confirm(`確定要刪除「${currentWizardPage.value.title}」及其所有項目嗎？`)) return;
+                    const delId = currentWizardPage.value.id;
+                    const res = await apiFetch(`/api/tab_pages/${delId}`, { method: 'DELETE' });
+                    if (res && res.ok) {
+                        await fetchWizardPages();
+                        await fetchItems();
+                    }
+                };
+
+                const addWizardItem = async () => {
+                    if (isLocked.value || !currentWizardPage.value) return;
+                    const f1 = newWizardItem.value.field1.trim();
+                    const f2 = newWizardItem.value.field2.trim();
+                    const f3 = newWizardItem.value.field3.trim();
+                    if (!f1 && !f2 && !f3) return;
+
+                    const res = await apiFetch('/api/items', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            tab_id: activeTabId.value,
+                            page_id: currentWizardPage.value.id,
+                            title: f1 || '新項目',
+                            field1: f1,
+                            field2: f2,
+                            field3: f3,
+                            category: 'primary'
+                        })
+                    });
+                    if (res && res.ok) {
+                        newWizardItem.value = { field1: '', field2: '', field3: '' };
+                        await fetchItems();
+                    }
+                };
+
+                const saveItemFields = async (item) => {
+                    if (isLocked.value) return;
+                    await apiFetch(`/api/items/${item.id}`, {
+                        method: 'PUT',
+                        body: JSON.stringify({
+                            field1: item.field1,
+                            field2: item.field2,
+                            field3: item.field3
+                        })
+                    });
+                };
+
+                // 🌟 Tick 純 ON / OFF 切換 (保持 ✔ 符號，切換亮綠 / 暗灰)
+                const toggleTick = async (item) => {
+                    await apiFetch(`/api/items/${item.id}/toggle_tick`, { method: 'PATCH' });
+                    item.is_active = item.is_active === 1 ? 0 : 1;
+                };
+
+                // --- Tabs 拖曳管理 ---
+                const onTabDragStart = (index, event) => {
+                    if (isLocked.value || tabs.value[index].isEditing) return;
+                    draggedTabIndex.value = index;
+                    isTabDraggingActive = true;
+                    event.dataTransfer.effectAllowed = 'move';
+                    event.dataTransfer.setData('text/plain', 'tab-' + index);
+                };
+
+                const onTabDragOver = (targetIndex, event) => {
+                    if (isLocked.value || draggedTabIndex.value === null) return;
+                    event.dataTransfer.dropEffect = 'move';
+                    dragTargetTabIndex.value = targetIndex;
+                };
+
+                const onTabDragLeave = (index) => {
+                    if (dragTargetTabIndex.value === index) dragTargetTabIndex.value = null;
+                };
+
+                const onTabDrop = async (targetIndex) => {
+                    if (draggedTabIndex.value === null) return;
+                    const fromIdx = draggedTabIndex.value;
+                    const toIdx = targetIndex;
+                    draggedTabIndex.value = null;
+                    dragTargetTabIndex.value = null;
+                    setTimeout(() => { isTabDraggingActive = false; }, 100);
+
+                    if (fromIdx !== toIdx) {
+                        const item = tabs.value.splice(fromIdx, 1)[0];
+                        tabs.value.splice(toIdx, 0, item);
+                        const orderedIds = tabs.value.map(t => t.id);
+                        await apiFetch('/api/tabs/reorder', {
+                            method: 'PUT',
+                            body: JSON.stringify({ ordered_ids: orderedIds })
+                        });
+                    }
+                };
+
+                const onTabDragEnd = () => {
+                    draggedTabIndex.value = null;
+                    dragTargetTabIndex.value = null;
+                    setTimeout(() => { isTabDraggingActive = false; }, 100);
+                };
+
+                const handleTabClick = (tabId) => {
+                    if (isTabDraggingActive) return;
+                    selectTab(tabId);
+                };
+
+                // --- Badges 拖曳 ---
+                const onBadgeDragStart = (index, event) => {
+                    if (isLocked.value) return;
+                    badgeDragState.value = { fromIndex: index, targetIndex: null };
+                    event.dataTransfer.effectAllowed = 'move';
+                    event.dataTransfer.setData('text/plain', 'badge-' + index);
+                };
+
+                const onBadgeDragOver = (index) => {
+                    if (isLocked.value || badgeDragState.value.fromIndex === null) return;
+                    badgeDragState.value.targetIndex = index;
+                };
+
+                const onBadgeDragLeave = (index) => {
+                    if (badgeDragState.value.targetIndex === index) badgeDragState.value = null;
+                };
+
+                const onBadgeDrop = async (targetIndex) => {
+                    if (badgeDragState.value.fromIndex === null) return;
+                    const fromIdx = badgeDragState.value.fromIndex;
+                    const toIdx = targetIndex;
+                    badgeDragState.value = { fromIndex: null, targetIndex: null };
+
+                    if (fromIdx !== toIdx) {
+                        const [movedBadge] = badges.value.splice(fromIdx, 1);
+                        badges.value.splice(toIdx, 0, movedBadge);
+                        const orderedIds = badges.value.map(b => b.id);
+                        await apiFetch('/api/badges/reorder', {
+                            method: 'PUT',
+                            body: JSON.stringify({ ordered_ids: orderedIds })
+                        });
+                    }
+                };
+
+                const onBadgeDragEnd = () => {
+                    badgeDragState.value = { fromIndex: null, targetIndex: null };
+                };
+
+                const isBadgeDragging = (index) => badgeDragState.value.fromIndex === index;
+                const isBadgeTarget = (index) => badgeDragState.value.targetIndex === index;
+
+                // --- Items 拖曳 (矩陣模式) ---
+                const onItemDragStart = (category, index, event) => {
+                    if (isLocked.value) return;
+                    itemDragState.value = { category, fromIndex: index, targetIndex: null };
+                    event.dataTransfer.effectAllowed = 'move';
+                    event.dataTransfer.setData('text/plain', `item-${category}-${index}`);
+                };
+
+                const onItemDragOver = (category, index) => {
+                    if (isLocked.value || itemDragState.value.category !== category) return;
+                    itemDragState.value.targetIndex = index;
+                };
+
+                const onItemDragLeave = (category, index) => {
+                    if (itemDragState.value.category === category && itemDragState.value.targetIndex === index) {
+                        itemDragState.value.targetIndex = null;
+                    }
+                };
+
+                const onItemDrop = async (category, targetIndex) => {
+                    if (itemDragState.value.category !== category || itemDragState.value.fromIndex === null) return;
+                    const fromIdx = itemDragState.value.fromIndex;
+                    const toIdx = targetIndex;
+                    itemDragState.value = { category: null, fromIndex: null, targetIndex: null };
+
+                    if (fromIdx !== toIdx) {
+                        let groupItems = items.value.filter(i => i.tab_id === activeTabId.value && i.category === category && (!i.page_id || i.page_id === 0));
+                        const [movedItem] = groupItems.splice(fromIdx, 1);
+                        groupItems.splice(toIdx, 0, movedItem);
+
+                        const otherItems = items.value.filter(i => !(i.tab_id === activeTabId.value && i.category === category && (!i.page_id || i.page_id === 0)));
+                        items.value = [...otherItems, ...groupItems];
+
+                        const orderedIds = groupItems.map(i => i.id);
+                        await apiFetch('/api/items/reorder', {
+                            method: 'PUT',
+                            body: JSON.stringify({ ordered_ids: orderedIds })
+                        });
+                    }
+                };
+
+                const onItemDragEnd = () => {
+                    itemDragState.value = { category: null, fromIndex: null, targetIndex: null };
+                };
+
+                const isItemDragging = (category, index) => itemDragState.value.category === category && itemDragState.value.fromIndex === index;
+                const isItemTarget = (category, index) => itemDragState.value.category === category && itemDragState.value.targetIndex === index;
+
+                // --- Badges 樣式 ---
+                const getBadgeTileClass = (status) => {
+                    if (status === 'green') return 'tile-green';
+                    if (status === 'red') return 'tile-red';
+                    return 'tile-gray';
+                };
+
+                const getBadgeBtnClass = (status) => {
+                    if (status === 'green') return 'bg-emerald-950/80 text-emerald-200 hover:bg-emerald-900 border border-emerald-500/50';
+                    if (status === 'red') return 'bg-rose-950/80 text-rose-200 hover:bg-rose-900 border border-rose-500/50';
+                    return 'bg-slate-900/90 text-slate-200 hover:bg-slate-800 border border-slate-400/60';
+                };
+
+                const getBadgeDisplayLabel = (badge) => {
+                    if (badge.status === 'green') return badge.label_green || '升';
+                    if (badge.status === 'red') return badge.label_red || '跌';
+                    return badge.label_gray || '平';
+                };
+
+                const toggleBadgeStatus = async (badge) => {
+                    if (badge.isEditingLabel) return;
+                    let nextStatus = badge.status === 'green' ? 'red' : (badge.status === 'red' ? 'gray' : 'green');
+                    badge.status = nextStatus;
+                    await apiFetch(`/api/badges/${badge.id}`, { method: 'PUT', body: JSON.stringify({ status: nextStatus }) });
+                };
+
+                const startEditBadgeLabel = (badge) => {
+                    badge.editLabelValue = getBadgeDisplayLabel(badge);
+                    badge.isEditingLabel = true;
+                    nextTick(() => {
+                        const el = document.getElementById('badge-label-input-' + badge.id);
+                        if (el) { el.focus(); el.select(); }
+                    });
+                };
+
+                const cancelEditBadgeLabel = (badge) => { badge.isEditingLabel = false; };
+
+                const saveBadgeLabel = async (badge) => {
+                    if (!badge.isEditingLabel) return;
+                    badge.isEditingLabel = false;
+                    const val = badge.editLabelValue.trim();
+                    if (!val) return;
+                    const payload = {};
+                    if (badge.status === 'green') { badge.label_green = val; payload.label_green = val; }
+                    else if (badge.status === 'red') { badge.label_red = val; payload.label_red = val; }
+                    else { badge.label_gray = val; payload.label_gray = val; }
+                    await apiFetch(`/api/badges/${badge.id}`, { method: 'PUT', body: JSON.stringify(payload) });
+                };
+
+                const addBadge = async () => {
+                    if (isLocked.value) return;
+                    const res = await apiFetch('/api/badges', {
+                        method: 'POST',
+                        body: JSON.stringify({ field1: '', field2: '', status: 'green', label_green: '升', label_red: '跌', label_gray: '平' })
+                    });
+                    if (res && res.ok) {
+                        const newBadge = await res.json();
+                        badges.value.push({ ...newBadge, isEditingLabel: false, editLabelValue: newBadge.label_green || '升' });
+                    }
+                };
+
+                const saveBadge = async (badge) => {
+                    if (isLocked.value) return;
+                    await apiFetch(`/api/badges/${badge.id}`, { method: 'PUT', body: JSON.stringify({ field1: badge.field1, field2: badge.field2 }) });
+                };
+
+                const deleteBadge = async (id) => {
+                    if (isLocked.value) return;
+                    await apiFetch(`/api/badges/${id}`, { method: 'DELETE' });
+                    badges.value = badges.value.filter(b => b.id !== id);
+                };
+
+                // --- Tab 操作 ---
+                const selectTab = async (id) => {
+                    activeTabId.value = id;
+                    currentWizardPageIndex.value = 0;
+                    await fetchWizardPages();
+                };
+
+                const addTab = async (tabType = 'matrix') => {
+                    if (isLocked.value) return;
+                    const defaultName = tabType === 'wizard' ? `SOP流程 ${tabs.value.length + 1}` : `分頁 ${tabs.value.length + 1}`;
+                    const name = prompt('請輸入新分頁名稱：', defaultName);
+                    if (!name || !name.trim()) return;
+                    const res = await apiFetch('/api/tabs', {
+                        method: 'POST',
+                        body: JSON.stringify({ name: name.trim(), tab_type: tabType })
+                    });
+                    if (res && res.ok) {
+                        const newTab = await res.json();
+                        await fetchTabs();
+                        await selectTab(newTab.id);
+                    }
+                };
+
+                const duplicateTab = async (tabId) => {
+                    if (isLocked.value) return;
+                    const res = await apiFetch(`/api/tabs/${tabId}/duplicate`, { method: 'POST' });
+                    if (res && res.ok) {
+                        const newTab = await res.json();
+                        await fetchTabs();
+                        await fetchItems();
+                        await selectTab(newTab.id);
+                    }
+                };
+
+                const startEditTab = (tab) => {
+                    if (isLocked.value) return;
+                    tab.editName = tab.name;
+                    tab.isEditing = true;
+                    nextTick(() => {
+                        const el = document.getElementById('tab-input-' + tab.id);
+                        if (el) { el.focus(); el.select(); }
+                    });
+                };
+
+                const cancelEditTab = (tab) => { tab.isEditing = false; tab.editName = tab.name; };
+
+                const saveEditTab = async (tab) => {
+                    if (!tab.isEditing) return;
+                    tab.isEditing = false;
+                    const trimmed = tab.editName.trim();
+                    if (trimmed && trimmed !== tab.name) {
+                        tab.name = trimmed;
+                        await apiFetch(`/api/tabs/${tab.id}`, { method: 'PUT', body: JSON.stringify({ name: trimmed }) });
+                    }
+                };
+
+                const deleteTab = async (id) => {
+                    if (isLocked.value) return;
+                    if (!confirm('確定要刪除此分頁及其所有內容嗎？')) return;
+                    const res = await apiFetch(`/api/tabs/${id}`, { method: 'DELETE' });
+                    if (res && res.ok) {
+                        await fetchTabs();
+                        await fetchItems();
+                        if (activeTabId.value === id && tabs.value.length > 0) {
+                            await selectTab(tabs.value[0].id);
+                        }
+                    }
+                };
+
+                // --- 項目操作 (矩陣模式) ---
+                const addItem = async () => {
+                    if (isLocked.value || !newItemTitle.value.trim() || !activeTabId.value) return;
+                    const res = await apiFetch('/api/items', {
+                        method: 'POST',
+                        body: JSON.stringify({ tab_id: activeTabId.value, page_id: 0, title: newItemTitle.value, category: newCategory.value })
+                    });
+                    if (res && res.ok) {
+                        newItemTitle.value = '';
+                        await fetchItems();
+                    }
+                };
+
+                const toggleLight = async (item) => {
+                    await apiFetch(`/api/items/${item.id}/toggle`, { method: 'PATCH' });
+                    item.is_active = item.is_active === 0 ? 1 : (item.is_active === 1 ? 2 : 0);
+                };
+
+                const getItemLedClass = (item, cat) => {
+                    if (item.is_active === 2) return 'led-on-yellow';
+                    if (item.is_active === 1) return cat === 'reverse' ? 'led-on-reverse' : 'led-on-green';
+                    return 'led-off';
+                };
+
+                const getItemStatusText = (item) => item.is_active === 2 ? 'N/A' : (item.is_active === 1 ? 'ON' : 'OFF');
+
+                const getItemBtnClass = (item, cat) => {
+                    if (item.is_active === 2) return 'bg-amber-950 text-amber-300 border border-amber-500 font-bold';
+                    if (item.is_active === 1) {
+                        return cat === 'reverse' ? 'bg-rose-950 text-rose-300 border border-rose-600 font-bold' : 'bg-emerald-950 text-emerald-300 border border-emerald-600 font-bold';
+                    }
+                    return 'bg-slate-800 text-slate-300 border border-slate-700';
+                };
+
+                const startEdit = (item) => {
+                    if (isLocked.value) return;
+                    item.editTitle = item.title;
+                    item.isEditing = true;
+                    nextTick(() => {
+                        const el = document.getElementById('input-' + item.id);
+                        if (el) { el.focus(); el.select(); }
+                    });
+                };
+
+                const cancelEdit = (item) => { item.isEditing = false; item.editTitle = item.title; };
+
+                const saveEdit = async (item) => {
+                    if (!item.isEditing) return;
+                    item.isEditing = false;
+                    const trimmed = item.editTitle.trim();
+                    if (trimmed && trimmed !== item.title) {
+                        item.title = trimmed;
+                        await apiFetch(`/api/items/${item.id}`, { method: 'PUT', body: JSON.stringify({ title: trimmed }) });
+                    }
+                };
+
+                const deleteItem = async (id) => {
+                    if (isLocked.value) return;
+                    await apiFetch(`/api/items/${id}`, { method: 'DELETE' });
+                    items.value = items.value.filter(i => i.id !== id);
+                };
+
+                onMounted(async () => {
+                    applyRootFontSize(zoomLevel.value);
+                    if (currentUser.value && authToken.value) {
+                        await loadUserData();
+                    }
+                });
+
+                return { 
+                    currentUser,
+                    authForm,
+                    authError,
+                    handleAuth,
+                    logout,
+                    tabs,
+                    activeTabId,
+                    activeTab,
+                    newItemTitle, 
+                    newCategory, 
+                    badges,
+                    wizardPages,
+                    currentWizardPageIndex,
+                    totalWizardPagesCount,
+                    isSummaryPage,
+                    currentWizardPage,
+                    currentStepItems,
+                    currentStepActiveCount,
+                    wizardTotalItemsCount,
+                    wizardTotalActiveCount,
+                    getPageItems,
+                    getPageActiveCount,
+                    newWizardItem,
+                    nextWizardPage,
+                    prevWizardPage,
+                    addWizardPage,
+                    startEditWizardPage,
+                    cancelEditWizardPage,
+                    saveEditWizardPage,
+                    deleteCurrentWizardPage,
+                    addWizardItem,
+                    saveItemFields,
+                    toggleTick,
+                    currentTabPrimaryItems, 
+                    currentTabSecondaryItems, 
+                    currentTabReverseItems,
+                    primaryActiveCount, 
+                    secondaryActiveCount, 
+                    reverseActiveCount,
+                    totalActiveCount, 
+                    masterStatus,
+                    calculateTabStatus,
+                    appBackgroundClass,
+                    panelBoxClass,
+                    itemRowClass,
+                    bigLightClass,
+                    getTabStatusClass,
+                    getTabDotClass,
+                    zoomLevel,
+                    zoomIn,
+                    zoomOut,
+                    resetZoom,
+                    isLocked,
+                    toggleLock,
+                    getBadgeTileClass,
+                    getBadgeBtnClass,
+                    getBadgeDisplayLabel,
+                    addBadge,
+                    toggleBadgeStatus,
+                    startEditBadgeLabel,
+                    cancelEditBadgeLabel,
+                    saveBadgeLabel,
+                    saveBadge,
+                    deleteBadge,
+                    badgeDragState,
+                    onBadgeDragStart,
+                    onBadgeDragOver,
+                    onBadgeDragLeave,
+                    onBadgeDrop,
+                    onBadgeDragEnd,
+                    isBadgeDragging,
+                    isBadgeTarget,
+                    selectTab,
+                    addTab,
+                    duplicateTab,
+                    startEditTab,
+                    cancelEditTab,
+                    saveEditTab,
+                    deleteTab,
+                    addItem, 
+                    toggleLight, 
+                    getItemLedClass,
+                    getItemStatusText,
+                    getItemBtnClass,
+                    startEdit, 
+                    cancelEdit, 
+                    saveEdit, 
+                    deleteItem,
+                    draggedTabIndex,
+                    dragTargetTabIndex,
+                    onTabDragStart,
+                    onTabDragOver,
+                    onTabDragLeave,
+                    onTabDrop,
+                    onTabDragEnd,
+                    handleTabClick,
+                    onItemDragStart,
+                    onItemDragOver,
+                    onItemDragLeave,
+                    onItemDrop,
+                    onItemDragEnd,
+                    isItemDragging,
+                    isItemTarget
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
