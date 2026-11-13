@@ -128,23 +128,6 @@ def init_db():
             )
         """)
 
-        # 預設建立 SOP流程導引 為第一頁 (sort_order = 0)
-        cursor.execute("SELECT id FROM tabs WHERE user_id = ? AND tab_type = 'wizard'", (default_user_id,))
-        wizard_tab = cursor.fetchone()
-        if not wizard_tab:
-            cursor.execute("UPDATE tabs SET sort_order = sort_order + 1 WHERE user_id = ?", (default_user_id,))
-            cursor.execute("INSERT INTO tabs (user_id, name, sort_order, tab_type) VALUES (?, 'SOP流程導引', 0, 'wizard')", (default_user_id,))
-            w_tab_id = cursor.lastrowid
-            
-            cursor.execute("INSERT INTO tab_pages (user_id, tab_id, title, sort_order) VALUES (?, ?, '第 1 頁：大趨勢確認', 0)", (default_user_id, w_tab_id))
-            p1_id = cursor.lastrowid
-            cursor.execute("INSERT INTO items (user_id, tab_id, page_id, title, field1, field2, field3, category, is_active, sort_order) VALUES (?, ?, ?, '日線趨勢', 'EMA 排列', '20 > 50', '多頭順勢中', 'primary', 0, 0)", (default_user_id, w_tab_id, p1_id))
-            
-            cursor.execute("INSERT INTO tab_pages (user_id, tab_id, title, sort_order) VALUES (?, ?, '第 2 頁：結構與信號驗證', 1)", (default_user_id, w_tab_id))
-            p2_id = cursor.lastrowid
-            cursor.execute("INSERT INTO items (user_id, tab_id, page_id, title, field1, field2, field3, category, is_active, sort_order) VALUES (?, ?, ?, '回撤位踩穩', '0.618 斐波', '2650.50', '已收長下影線', 'primary', 0, 0)", (default_user_id, w_tab_id, p2_id))
-            cursor.execute("INSERT INTO items (user_id, tab_id, page_id, title, field1, field2, field3, category, is_active, sort_order) VALUES (?, ?, ?, '反向一票否決', '阻力檢查', 'R = 0', '上方無密集籌碼阻礙', 'primary', 0, 1)", (default_user_id, w_tab_id, p2_id))
-
         conn.commit()
 
 init_db()
@@ -219,6 +202,9 @@ class BadgeUpdate(BaseModel):
 class BadgeReorder(BaseModel):
     ordered_ids: List[int]
 
+class AdminPasswordReset(BaseModel):
+    new_password: str
+
 # --- 認證路由 ---
 @app.post("/api/auth/register")
 def register(payload: UserAuth):
@@ -239,22 +225,9 @@ def register(payload: UserAuth):
         
         cursor.execute("INSERT INTO tabs (user_id, name, sort_order, tab_type) VALUES (?, 'SOP流程導引', 0, 'wizard')", (user_id,))
         w_tab_id = cursor.lastrowid
-        cursor.execute("INSERT INTO tab_pages (user_id, tab_id, title, sort_order) VALUES (?, ?, '第 1 頁：大趨勢確認', 0)", (user_id, w_tab_id))
-        p1_id = cursor.lastrowid
-        cursor.execute("INSERT INTO items (user_id, tab_id, page_id, title, field1, field2, field3, category, is_active, sort_order) VALUES (?, ?, ?, '日線趨勢', 'EMA 排列', '20 > 50', '多頭順勢中', 'primary', 0, 0)", (user_id, w_tab_id, p1_id))
+        cursor.execute("INSERT INTO tab_pages (user_id, tab_id, title, sort_order) VALUES (?, ?, '第 1 頁', 0)", (user_id, w_tab_id))
         
-        cursor.execute("INSERT INTO tab_pages (user_id, tab_id, title, sort_order) VALUES (?, ?, '第 2 頁：結構與信號驗證', 1)", (user_id, w_tab_id))
-        p2_id = cursor.lastrowid
-        cursor.execute("INSERT INTO items (user_id, tab_id, page_id, title, field1, field2, field3, category, is_active, sort_order) VALUES (?, ?, ?, '回撤位踩穩', '0.618 斐波', '2650.50', '已收長下影線', 'primary', 0, 0)", (user_id, w_tab_id, p2_id))
-        cursor.execute("INSERT INTO items (user_id, tab_id, page_id, title, field1, field2, field3, category, is_active, sort_order) VALUES (?, ?, ?, '反向一票否決', '阻力檢查', 'R = 0', '上方無密集籌碼阻礙', 'primary', 0, 1)", (user_id, w_tab_id, p2_id))
-
         cursor.execute("INSERT INTO tabs (user_id, name, sort_order, tab_type) VALUES (?, '矩陣清單', 1, 'matrix')", (user_id,))
-        m_tab_id = cursor.lastrowid
-        cursor.execute("INSERT INTO items (user_id, tab_id, page_id, title, category, is_active, sort_order) VALUES (?, ?, 0, '主要條件項目 A', 'primary', 0, 0)", (user_id, m_tab_id))
-        cursor.execute("INSERT INTO items (user_id, tab_id, page_id, title, category, is_active, sort_order) VALUES (?, ?, 0, '次要輔助項目 B', 'secondary', 0, 0)", (user_id, m_tab_id))
-        cursor.execute("INSERT INTO items (user_id, tab_id, page_id, title, category, is_active, sort_order) VALUES (?, ?, 0, '反向警戒項目 C', 'reverse', 0, 0)", (user_id, m_tab_id))
-
-        cursor.execute("INSERT INTO header_badges (user_id, field1, field2, status, label_green, label_red, label_gray, sort_order) VALUES (?, '指標1', 'Normal', 'green', '升', '跌', '平', 0)", (user_id,))
         conn.commit()
         
     return {"token": token, "username": username}
@@ -273,6 +246,22 @@ def login(payload: UserAuth):
         cursor.execute("UPDATE users SET token = ? WHERE id = ?", (token, user[0]))
         conn.commit()
     return {"token": token, "username": username}
+
+# --- Admin Password Reset 路由 (Temporary) ---
+@app.post("/api/admin/reset-password")
+def reset_admin_password(payload: AdminPasswordReset, authorization: str = Header(None)):
+    user_id = get_current_user_id(authorization)
+    with sqlite3.connect(DB_PATH) as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT username FROM users WHERE id = ?", (user_id,))
+        user = cursor.fetchone()
+        if not user or user[0] != "admin":
+            raise HTTPException(status_code=403, detail="權限不足，僅限 admin 帳號")
+        
+        new_hash = hash_password(payload.new_password)
+        cursor.execute("UPDATE users SET password_hash = ? WHERE username = 'admin'", (new_hash,))
+        conn.commit()
+    return {"status": "success", "message": "Admin password updated successfully"}
 
 # --- Tabs 路由 ---
 @app.get("/api/tabs")
