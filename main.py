@@ -1,3 +1,5 @@
+import os
+import shutil
 import sqlite3
 import hashlib
 import secrets
@@ -9,11 +11,19 @@ from pydantic import BaseModel
 
 app = FastAPI()
 
+# Use /tmp directory on Vercel since the root filesystem is read-only
+DB_PATH = "/tmp/items.db" if os.environ.get("VERCEL") else "items.db"
+
 def hash_password(password: str) -> str:
     return hashlib.sha256(password.encode("utf-8")).hexdigest()
 
 def init_db():
-    with sqlite3.connect("items.db") as conn:
+    # If on Vercel and /tmp/items.db doesn't exist yet, copy your existing local items.db as a seed
+    if os.environ.get("VERCEL") and not os.path.exists(DB_PATH):
+        if os.path.exists("items.db"):
+            shutil.copy("items.db", DB_PATH)
+
+    with sqlite3.connect(DB_PATH) as conn:
         cursor = conn.cursor()
         
         # 1. users 表格
@@ -143,7 +153,7 @@ def get_current_user_id(authorization: str = Header(None)) -> int:
     if not authorization:
         raise HTTPException(status_code=401, detail="未授權，請先登入")
     token = authorization.replace("Bearer ", "").strip()
-    with sqlite3.connect("items.db") as conn:
+    with sqlite3.connect(DB_PATH) as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT id FROM users WHERE token = ?", (token,))
         user = cursor.fetchone()
@@ -216,7 +226,7 @@ def register(payload: UserAuth):
     if not username or not payload.password:
         raise HTTPException(status_code=400, detail="用戶名及密碼不能為空")
     
-    with sqlite3.connect("items.db") as conn:
+    with sqlite3.connect(DB_PATH) as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT id FROM users WHERE username = ?", (username,))
         if cursor.fetchone():
@@ -252,7 +262,7 @@ def register(payload: UserAuth):
 @app.post("/api/auth/login")
 def login(payload: UserAuth):
     username = payload.username.strip()
-    with sqlite3.connect("items.db") as conn:
+    with sqlite3.connect(DB_PATH) as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT id, password_hash FROM users WHERE username = ?", (username,))
         user = cursor.fetchone()
@@ -268,7 +278,7 @@ def login(payload: UserAuth):
 @app.get("/api/tabs")
 def get_tabs(authorization: str = Header(None)):
     user_id = get_current_user_id(authorization)
-    with sqlite3.connect("items.db") as conn:
+    with sqlite3.connect(DB_PATH) as conn:
         conn.row_factory = sqlite3.Row
         rows = conn.execute("SELECT * FROM tabs WHERE user_id = ? ORDER BY sort_order ASC, id ASC", (user_id,)).fetchall()
         return [dict(r) for r in rows]
@@ -277,7 +287,7 @@ def get_tabs(authorization: str = Header(None)):
 def add_tab(payload: TabCreate, authorization: str = Header(None)):
     user_id = get_current_user_id(authorization)
     name = payload.name.strip() or ("SOP流程導引" if payload.tab_type == "wizard" else "新分頁")
-    with sqlite3.connect("items.db") as conn:
+    with sqlite3.connect(DB_PATH) as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT COALESCE(MAX(sort_order), -1) + 1 FROM tabs WHERE user_id = ?", (user_id,))
         next_order = cursor.fetchone()[0]
@@ -293,7 +303,7 @@ def add_tab(payload: TabCreate, authorization: str = Header(None)):
 @app.post("/api/tabs/{tab_id}/duplicate")
 def duplicate_tab(tab_id: int, authorization: str = Header(None)):
     user_id = get_current_user_id(authorization)
-    with sqlite3.connect("items.db") as conn:
+    with sqlite3.connect(DB_PATH) as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT name, sort_order, tab_type FROM tabs WHERE id = ? AND user_id = ?", (tab_id, user_id))
         source_tab = cursor.fetchone()
@@ -334,7 +344,7 @@ def duplicate_tab(tab_id: int, authorization: str = Header(None)):
 @app.put("/api/tabs/reorder")
 def reorder_tabs(payload: TabReorder, authorization: str = Header(None)):
     user_id = get_current_user_id(authorization)
-    with sqlite3.connect("items.db") as conn:
+    with sqlite3.connect(DB_PATH) as conn:
         cursor = conn.cursor()
         for order, tab_id in enumerate(payload.ordered_ids):
             cursor.execute("UPDATE tabs SET sort_order = ? WHERE id = ? AND user_id = ?", (order, tab_id, user_id))
@@ -347,7 +357,7 @@ def update_tab(tab_id: int, payload: TabUpdate, authorization: str = Header(None
     name = payload.name.strip()
     if not name:
         raise HTTPException(status_code=400, detail="Name cannot be empty")
-    with sqlite3.connect("items.db") as conn:
+    with sqlite3.connect(DB_PATH) as conn:
         cursor = conn.cursor()
         cursor.execute("UPDATE tabs SET name = ? WHERE id = ? AND user_id = ?", (name, tab_id, user_id))
         conn.commit()
@@ -356,7 +366,7 @@ def update_tab(tab_id: int, payload: TabUpdate, authorization: str = Header(None
 @app.delete("/api/tabs/{tab_id}")
 def delete_tab(tab_id: int, authorization: str = Header(None)):
     user_id = get_current_user_id(authorization)
-    with sqlite3.connect("items.db") as conn:
+    with sqlite3.connect(DB_PATH) as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT COUNT(*) FROM tabs WHERE user_id = ?", (user_id,))
         if cursor.fetchone()[0] <= 1:
@@ -371,7 +381,7 @@ def delete_tab(tab_id: int, authorization: str = Header(None)):
 @app.get("/api/tabs/{tab_id}/pages")
 def get_tab_pages(tab_id: int, authorization: str = Header(None)):
     user_id = get_current_user_id(authorization)
-    with sqlite3.connect("items.db") as conn:
+    with sqlite3.connect(DB_PATH) as conn:
         conn.row_factory = sqlite3.Row
         rows = conn.execute("SELECT * FROM tab_pages WHERE tab_id = ? AND user_id = ? ORDER BY sort_order ASC, id ASC", (tab_id, user_id)).fetchall()
         return [dict(r) for r in rows]
@@ -379,7 +389,7 @@ def get_tab_pages(tab_id: int, authorization: str = Header(None)):
 @app.post("/api/tabs/{tab_id}/pages")
 def add_tab_page(tab_id: int, payload: TabPageCreate, authorization: str = Header(None)):
     user_id = get_current_user_id(authorization)
-    with sqlite3.connect("items.db") as conn:
+    with sqlite3.connect(DB_PATH) as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT COALESCE(MAX(sort_order), -1) + 1, COUNT(*) + 1 FROM tab_pages WHERE tab_id = ? AND user_id = ?", (tab_id, user_id))
         row = cursor.fetchone()
@@ -396,7 +406,7 @@ def update_tab_page(page_id: int, payload: TabPageUpdate, authorization: str = H
     title = payload.title.strip()
     if not title:
         raise HTTPException(status_code=400, detail="Title cannot be empty")
-    with sqlite3.connect("items.db") as conn:
+    with sqlite3.connect(DB_PATH) as conn:
         cursor = conn.cursor()
         cursor.execute("UPDATE tab_pages SET title = ? WHERE id = ? AND user_id = ?", (title, page_id, user_id))
         conn.commit()
@@ -405,7 +415,7 @@ def update_tab_page(page_id: int, payload: TabPageUpdate, authorization: str = H
 @app.delete("/api/tab_pages/{page_id}")
 def delete_tab_page(page_id: int, authorization: str = Header(None)):
     user_id = get_current_user_id(authorization)
-    with sqlite3.connect("items.db") as conn:
+    with sqlite3.connect(DB_PATH) as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT tab_id FROM tab_pages WHERE id = ? AND user_id = ?", (page_id, user_id))
         row = cursor.fetchone()
@@ -424,7 +434,7 @@ def delete_tab_page(page_id: int, authorization: str = Header(None)):
 @app.get("/api/badges")
 def get_badges(authorization: str = Header(None)):
     user_id = get_current_user_id(authorization)
-    with sqlite3.connect("items.db") as conn:
+    with sqlite3.connect(DB_PATH) as conn:
         conn.row_factory = sqlite3.Row
         rows = conn.execute("SELECT * FROM header_badges WHERE user_id = ? ORDER BY sort_order ASC, id ASC", (user_id,)).fetchall()
         return [dict(r) for r in rows]
@@ -433,7 +443,7 @@ def get_badges(authorization: str = Header(None)):
 def add_badge(badge: BadgeCreate, authorization: str = Header(None)):
     user_id = get_current_user_id(authorization)
     try:
-        with sqlite3.connect("items.db") as conn:
+        with sqlite3.connect(DB_PATH) as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT COALESCE(MAX(sort_order), -1) + 1 FROM header_badges WHERE user_id = ?", (user_id,))
             next_order = cursor.fetchone()[0]
@@ -464,7 +474,7 @@ def add_badge(badge: BadgeCreate, authorization: str = Header(None)):
 @app.put("/api/badges/reorder")
 def reorder_badges(payload: BadgeReorder, authorization: str = Header(None)):
     user_id = get_current_user_id(authorization)
-    with sqlite3.connect("items.db") as conn:
+    with sqlite3.connect(DB_PATH) as conn:
         cursor = conn.cursor()
         for order, badge_id in enumerate(payload.ordered_ids):
             cursor.execute("UPDATE header_badges SET sort_order = ? WHERE id = ? AND user_id = ?", (order, badge_id, user_id))
@@ -474,7 +484,7 @@ def reorder_badges(payload: BadgeReorder, authorization: str = Header(None)):
 @app.put("/api/badges/{badge_id}")
 def update_badge(badge_id: int, payload: BadgeUpdate, authorization: str = Header(None)):
     user_id = get_current_user_id(authorization)
-    with sqlite3.connect("items.db") as conn:
+    with sqlite3.connect(DB_PATH) as conn:
         cursor = conn.cursor()
         updates = []
         params = []
@@ -506,7 +516,7 @@ def update_badge(badge_id: int, payload: BadgeUpdate, authorization: str = Heade
 @app.delete("/api/badges/{badge_id}")
 def delete_badge(badge_id: int, authorization: str = Header(None)):
     user_id = get_current_user_id(authorization)
-    with sqlite3.connect("items.db") as conn:
+    with sqlite3.connect(DB_PATH) as conn:
         cursor = conn.cursor()
         cursor.execute("DELETE FROM header_badges WHERE id = ? AND user_id = ?", (badge_id, user_id))
         conn.commit()
@@ -516,7 +526,7 @@ def delete_badge(badge_id: int, authorization: str = Header(None)):
 @app.get("/api/items")
 def get_items(authorization: str = Header(None)):
     user_id = get_current_user_id(authorization)
-    with sqlite3.connect("items.db") as conn:
+    with sqlite3.connect(DB_PATH) as conn:
         conn.row_factory = sqlite3.Row
         rows = conn.execute("SELECT * FROM items WHERE user_id = ? ORDER BY sort_order ASC, id ASC", (user_id,)).fetchall()
         return [dict(r) for r in rows]
@@ -532,7 +542,7 @@ def add_item(item: ItemCreate, authorization: str = Header(None)):
     f2 = (item.field2 or "").strip()
     f3 = (item.field3 or "").strip()
 
-    with sqlite3.connect("items.db") as conn:
+    with sqlite3.connect(DB_PATH) as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT COALESCE(MAX(sort_order), -1) + 1 FROM items WHERE user_id = ? AND tab_id = ? AND page_id = ?", (user_id, item.tab_id, page_id))
         next_order = cursor.fetchone()[0]
@@ -560,7 +570,7 @@ def add_item(item: ItemCreate, authorization: str = Header(None)):
 @app.put("/api/items/reorder")
 def reorder_items(payload: ItemReorder, authorization: str = Header(None)):
     user_id = get_current_user_id(authorization)
-    with sqlite3.connect("items.db") as conn:
+    with sqlite3.connect(DB_PATH) as conn:
         cursor = conn.cursor()
         for order, item_id in enumerate(payload.ordered_ids):
             cursor.execute("UPDATE items SET sort_order = ? WHERE id = ? AND user_id = ?", (order, item_id, user_id))
@@ -570,7 +580,7 @@ def reorder_items(payload: ItemReorder, authorization: str = Header(None)):
 @app.put("/api/items/{item_id}")
 def update_item_fields(item_id: int, payload: ItemUpdate, authorization: str = Header(None)):
     user_id = get_current_user_id(authorization)
-    with sqlite3.connect("items.db") as conn:
+    with sqlite3.connect(DB_PATH) as conn:
         cursor = conn.cursor()
         updates = []
         params = []
@@ -598,7 +608,7 @@ def update_item_fields(item_id: int, payload: ItemUpdate, authorization: str = H
 @app.patch("/api/items/{item_id}/toggle")
 def toggle_item(item_id: int, authorization: str = Header(None)):
     user_id = get_current_user_id(authorization)
-    with sqlite3.connect("items.db") as conn:
+    with sqlite3.connect(DB_PATH) as conn:
         cursor = conn.cursor()
         cursor.execute("""
             UPDATE items 
@@ -616,7 +626,7 @@ def toggle_item(item_id: int, authorization: str = Header(None)):
 @app.patch("/api/items/{item_id}/toggle_tick")
 def toggle_item_tick(item_id: int, authorization: str = Header(None)):
     user_id = get_current_user_id(authorization)
-    with sqlite3.connect("items.db") as conn:
+    with sqlite3.connect(DB_PATH) as conn:
         cursor = conn.cursor()
         cursor.execute("""
             UPDATE items 
@@ -632,7 +642,7 @@ def toggle_item_tick(item_id: int, authorization: str = Header(None)):
 @app.delete("/api/items/{item_id}")
 def delete_item(item_id: int, authorization: str = Header(None)):
     user_id = get_current_user_id(authorization)
-    with sqlite3.connect("items.db") as conn:
+    with sqlite3.connect(DB_PATH) as conn:
         cursor = conn.cursor()
         cursor.execute("DELETE FROM items WHERE id = ? AND user_id = ?", (item_id, user_id))
         conn.commit()
